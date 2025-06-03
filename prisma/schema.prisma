@@ -1,0 +1,24 @@
+generator client {
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = "5"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User { 
+  rfc String @id 
+  hashed_password String 
+  role String 
+  tenant_id String? 
+  created_at DateTime @default(now()) 
+}
+
+model BlacklistedToken { 
+  token String @id 
+  blacklisted_at DateTime @default(now()) 
+  expires_at DateTime
+}
