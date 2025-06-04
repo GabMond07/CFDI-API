@@ -2,12 +2,13 @@ from fastapi import Request, HTTPException
 import jwt
 from .auth import SECRET_KEY, ALGORITHM
 from prisma import Prisma
+from datetime import datetime
 
 async def auth_middleware(request: Request, call_next):
     """
     Middleware para validar tokens JWT en las solicitudes.
     Excluye los endpoints de login y registro.
-    Verifica si el token está en la lista negra.
+    Verifica si el token está revocado o ha expirado.
     """
     if request.url.path in ["/auth/login", "/auth/register", "/auth/logout"]:
         return await call_next(request)
@@ -18,13 +19,17 @@ async def auth_middleware(request: Request, call_next):
     
     try:
         token = token.replace("Bearer ", "")
-        # Verificar si el token está en la lista negra
+        # Verificar si el token existe, está revocado o ha expirado
         prisma = Prisma()
         await prisma.connect()
         try:
-            blacklisted = await prisma.blacklistedtoken.find_unique(where={"token": token})
-            if blacklisted:
-                raise HTTPException(status_code=401, detail="Token has been blacklisted")
+            auth_token = await prisma.authtoken.find_unique(where={"token": token})
+            if not auth_token:
+                raise HTTPException(status_code=401, detail="Invalid token")
+            if auth_token.revoked_at:
+                raise HTTPException(status_code=401, detail="Token has been revoked")
+            if auth_token.expires_at < datetime.utcnow():
+                raise HTTPException(status_code=401, detail="Token has expired")
         finally:
             await prisma.disconnect()
 
