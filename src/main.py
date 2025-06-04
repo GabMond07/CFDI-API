@@ -26,15 +26,15 @@ async def register(user: UserRegister):
         new_user = await create_user(
             rfc=user.rfc,
             password=user.password,
-            role="contribuyente"  # Rol por defecto
+            role_id=1  # Rol por defecto
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
     # Genera el token JWT inmediatamente después del registro
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": new_user["rfc"], "role": new_user["role"], "tenant_id": new_user["tenant_id"]},
+    access_token = await create_access_token(
+        data={"sub": new_user["rfc"], "role_id": new_user["role_id"]},
         expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -50,8 +50,8 @@ async def login(credentials: UserCredentials):
     
     # Genera el token JWT con información del usuario
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = create_access_token(
-        data={"sub": user["rfc"], "role": user["role"], "tenant_id": user["tenant_id"]},
+    access_token = await create_access_token(
+        data={"sub": user["rfc"], "role_id": user["role_id"]},
         expires_delta=access_token_expires
     )
     return {"access_token": access_token, "token_type": "bearer"}
@@ -59,38 +59,38 @@ async def login(credentials: UserCredentials):
 @app.post("/auth/logout")
 async def logout(request: Request):
     """
-    Invalida el token JWT añadiéndolo a la lista negra.
+    Invalida todos los tokens JWT del usuario marcándolos como revocados.
     """
     token = request.headers.get("Authorization")
     if not token:
         raise HTTPException(status_code=401, detail="Token missing")
     
+    if not token.startswith("Bearer "):
+        raise HTTPException(status_code=400, detail="Invalid token format")
+    
     token = token.replace("Bearer ", "")
     
-    # Decodificar el token para obtener la fecha de expiración
+    # Decodificar el token para obtener el RFC del usuario
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_signature": False, "verify_exp": False})
-        exp = payload.get("exp")
-        if not exp:
-            raise HTTPException(status_code=400, detail="Token has no expiration")
-        expires_at = datetime.utcfromtimestamp(exp)
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_rfc = payload.get("sub")
+        if not user_rfc:
+            raise HTTPException(status_code=400, detail="Invalid token payload")
     except jwt.InvalidTokenError:
-        raise HTTPException(status_code=400, detail="Invalid token")
+        raise HTTPException(status_code=401, detail="Invalid token")
     
-    # Añadir el token a la lista negra
+    # Marcar todos los tokens del usuario como revocados
     prisma = Prisma()
     await prisma.connect()
     try:
-        # Verificar si el token ya está en la lista negra
-        existing = await prisma.blacklistedtoken.find_unique(where={"token": token})
-        if existing:
-            raise HTTPException(status_code=400, detail="Token already blacklisted")
-        
-        # Añadir el token con su fecha de expiración
-        await prisma.blacklistedtoken.create(
+        # Actualizar todos los tokens del usuario para marcarlos como revocados
+        await prisma.authtoken.update_many(
+            where={
+                "user_id": user_rfc,
+                "revoked_at": None  # Solo los que no están revocados
+            },
             data={
-                "token": token,
-                "expires_at": expires_at
+                "revoked_at": datetime.utcnow()
             }
         )
         return {"message": "Successfully logged out"}
