@@ -1,24 +1,35 @@
-generator client {
-  provider             = "prisma-client-py"
-  interface            = "asyncio"
-  recursive_type_depth = "5"
-}
-
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
-model User { 
-  rfc String @id 
-  hashed_password String 
-  role String 
-  tenant_id String? 
-  created_at DateTime @default(now()) 
+generator client {
+    provider = "prisma-client-py"
+    interface = "asyncio"
+    recursive_type_depth = 5
 }
 
-model BlacklistedToken { 
-  token String @id 
-  blacklisted_at DateTime @default(now()) 
-  expires_at DateTime
+model Roles {
+    id          Int      @id @default(autoincrement())
+    role        String   @unique // Ejemplo: "contribuyente", "admin"
+    users       User[]   // Relación con User
+}
+
+model User {
+    rfc          String   @id // RFC como identificador principal
+    hashed_password String
+    role_id      Int      // Relación con Roles
+    created_at   DateTime @default(now())
+    role         Roles    @relation(fields: [role_id], references: [id])
+    tokens       AuthToken[] // Relación con AuthToken
+}
+
+model AuthToken {
+    id           BigInt   @id @default(autoincrement())
+    token        String   @unique
+    expires_at   DateTime
+    created_at   DateTime @default(now())
+    revoked_at   DateTime? // Para marcar si el token fue revocado
+    user_id      String   // Relación con User (usamos rfc como clave foránea)
+    user         User     @relation(fields: [user_id], references: [rfc])
 }
