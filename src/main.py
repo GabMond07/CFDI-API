@@ -1,8 +1,8 @@
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends, Request, Query
 from fastapi.security import OAuth2PasswordBearer
-from datetime import timedelta, datetime
+from datetime import timedelta, datetime, date
 from .auth import authenticate_user, create_access_token, create_user, ACCESS_TOKEN_EXPIRE_MINUTES
-from .models import UserCredentials, UserRegister, Token
+from .models import UserCredentials, UserRegister, Token, BatchQueryRequest, BatchQueryResponse
 from .middleware import auth_middleware
 from prisma import Prisma
 import jwt
@@ -96,3 +96,57 @@ async def logout(request: Request):
         return {"message": "Successfully logged out"}
     finally:
         await prisma.disconnect()
+
+@app.get("/datos/tiempo-real")
+async def obtener_datos_tiempo_real(limit: int = Query(10, le=50, description="Cantidad máxima de CFDIs recientes")):
+    """
+    Devuelve los últimos CFDIs emitidos y un resumen del día actual.
+    """
+    prisma = Prisma()
+    await prisma.connect()
+
+    try:
+        # Últimos CFDIs emitidos (limit configurable)
+        ultimos_cfdis = await prisma.cfdi.find_many(
+            order={"issueDate": "desc"},
+            take=limit
+        )
+
+        # CFDIs emitidos hoy
+        hoy = date.today()
+        cfdis_hoy = await prisma.cfdi.find_many(
+            where={"issueDate": {"equals": hoy}}
+        )
+        total_emitidos = len(cfdis_hoy)
+        suma_total = sum(cfdi.total for cfdi in cfdis_hoy)
+
+        return {
+            "ultimosCFDIs": ultimos_cfdis,
+            "resumenDelDia": {
+                "fecha": hoy,
+                "totalEmitidos": total_emitidos,
+                "sumaTotal": suma_total
+            }
+        }
+
+    finally:
+        await prisma.disconnect()
+
+@app.post("/datos/batch", response_model=BatchQueryResponse)
+async def consultar_en_batch(request: BatchQueryRequest):
+    """
+    Consulta múltiples conjuntos de datos en modo batch (por lotes).
+    """
+    resultados = []
+
+    prisma = Prisma()
+    await prisma.connect()
+
+    try:
+        for filtro in request.filtros:
+            resultado = await prisma.cfdi.find_many(where=filtro)
+            resultados.append(resultado)
+    finally:
+        await prisma.disconnect()
+
+    return {"resultados": resultados}

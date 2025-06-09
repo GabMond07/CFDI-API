@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import List, Dict
 
 class UserCredentials(BaseModel):
     rfc: str = Field(..., description="RFC del usuario para autenticación")
@@ -15,3 +16,9 @@ class UserRegister(BaseModel):
 class Token(BaseModel):
     access_token: str = Field(..., description="Token JWT para autenticación")
     token_type: str = Field(..., description="Tipo de token, debe ser 'bearer'")
+
+class BatchQueryRequest(BaseModel):
+    filtros: List[Dict] = Field(..., description="Lista de filtros para cada lote de consulta")
+
+class BatchQueryResponse(BaseModel):
+    resultados: List[List[Dict]] = Field(..., description="Resultados por cada conjunto de filtros")

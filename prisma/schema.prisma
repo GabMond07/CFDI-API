@@ -33,3 +33,43 @@ model AuthToken {
     user_id      String   // Relación con User (usamos rfc como clave foránea)
     user         User     @relation(fields: [user_id], references: [rfc])
 }
+
+model Cfdi {
+  cfdiId        Int      @id @default(autoincrement()) // CFDI_ID
+  uuid          String   @unique                       // UUID
+  issueDate     DateTime                               // Issue_Date
+  paymentMethod String                                 // Payment_Method
+  currency      String                                 // Currency
+  voucherType   String                                 // Voucher_Type
+  total         Float                                  // Total
+  subtotal      Float                                  // Subtotal
+  paymentForm   String                                 // Payment_Form
+
+  userId     String
+  user       User     @relation(fields: [userId], references: [rfc])
+  issuerId   Int
+  issuer     Issuer   @relation(fields: [issuerId], references: [issuerId])
+  receiverId Int
+  receiver   Receiver @relation(fields: [receiverId], references: [receiverId])
+}
+
+model Issuer {
+  issuerId   Int     @id @default(autoincrement()) // Issuer_ID
+  rfcIssuer  String                               // RFC_Issuer
+  nameIssuer String                               // Name_Issuer
+  taxRegime  String                               // Tax_Regime
+
+  cfdis      Cfdi[]                                // Relación inversa
+}
+
+model Receiver {
+  receiverId   Int     @id @default(autoincrement()) // Receiver_ID
+  rfcReceiver  String                                // RFC_Receiver
+  nameReceiver String                                // Name_Receiver
+  cfdiUse      String                                // CFDI_Use
+  taxRegime    String                                // Tax_Regime
+  taxAddress   String                                // Tax_Address
+
+  cfdis        Cfdi[]                                 // Relación inversa
+}
+
