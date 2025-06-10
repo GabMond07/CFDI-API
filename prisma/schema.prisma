@@ -11,25 +11,95 @@ generator client {
 
 model Roles {
     id          Int      @id @default(autoincrement())
-    role        String   @unique // Ejemplo: "contribuyente", "admin"
-    users       User[]   // Relación con User
+    role        String   @db.VarChar(50) @unique
+    users       User[]
 }
 
 model User {
-    rfc          String   @id // RFC como identificador principal
-    hashed_password String
-    role_id      Int      // Relación con Roles
-    created_at   DateTime @default(now())
+    rfc          String   @id @db.VarChar(13)
+    username     String?  @db.VarChar(100)
+    email        String?  @db.VarChar(150)
+    hashed_password String @db.VarChar(255)
+    role_id      Int
+    created_at   DateTime @default(now()) @db.Timestamptz
     role         Roles    @relation(fields: [role_id], references: [id])
-    tokens       AuthToken[] // Relación con AuthToken
+    cfdis        CFDI[]
+    tokens       AuthToken[]
 }
 
 model AuthToken {
     id           BigInt   @id @default(autoincrement())
-    token        String   @unique
-    expires_at   DateTime
-    created_at   DateTime @default(now())
-    revoked_at   DateTime? // Para marcar si el token fue revocado
-    user_id      String   // Relación con User (usamos rfc como clave foránea)
-    user         User     @relation(fields: [user_id], references: [rfc])
+    token        String   @unique @db.VarChar(255)
+    expires_at   DateTime @db.Timestamptz
+    created_at   DateTime @default(now()) @db.Timestamptz
+    revoked_at   DateTime?
+    user_id      String   @db.VarChar(13)
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model Issuer {
+    rfc_issuer   String   @id @db.VarChar(13)
+    name_issuer  String?  @db.VarChar(150)
+    tax_regime   String?  @db.VarChar(100)
+    cfdis        CFDI[]
+    created_at   DateTime @default(now()) @db.Timestamptz
+}
+
+model CFDI {
+    id           BigInt   @id @default(autoincrement())
+    uuid         String   @unique @db.VarChar(36)
+    issue_date   DateTime @db.Timestamptz
+    payment_method String? @db.VarChar(50)
+    currency     String?  @db.VarChar(10)
+    type         String   @db.VarChar(20)
+    total        Float
+    subtotal     Float
+    user_id      String   @db.VarChar(13)
+    payment_form String?  @db.VarChar(50)
+    issuer_id    String   @db.VarChar(13)
+    cfdi_use     String?  @db.VarChar(50)
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    issuer       Issuer   @relation(fields: [issuer_id], references: [rfc_issuer], onDelete: Restrict, onUpdate: Cascade)
+    attachments  CFDIAttachment[]
+    concepts     Concept[]
+
+    @@index([user_id])
+    @@index([issue_date])
+}
+
+model CFDIAttachment {
+    id           BigInt   @id @default(autoincrement())
+    cfdi_id      BigInt
+    file_type    String   @db.VarChar(10)
+    file_content Bytes
+    created_at   DateTime @default(now()) @db.Timestamptz
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([cfdi_id])
+}
+
+model Concept {
+    id           BigInt   @id @default(autoincrement())
+    cfdi_id      BigInt
+    fiscal_key   String?  @db.VarChar(50)
+    description  String?  @db.Text
+    quantity     Float
+    unit_value   Float
+    amount       Float
+    discount     Float    @default(0)
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    taxes        Taxes[]
+
+    @@index([cfdi_id])
+}
+
+model Taxes {
+    id           BigInt   @id @default(autoincrement())
+    concept_id   BigInt
+    tax_type     String   @db.VarChar(50)
+    rate         Float
+    amount       Float
+    concept      Concept  @relation(fields: [concept_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([concept_id])
 }
