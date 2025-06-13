@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" UUID="550e8400-e29b-41d4-a716-446655440019" Version="4.0" Serie="A" Folio="1" Fecha="2025-06-12T23:00:00Z" Sello="..." NoCertificado="1234567890" Certificado="..." LugarExpedicion="Ciudad de México" TipoDeComprobante="I" Moneda="MXN" Total="1160.08" SubTotal="1000.50" MetodoPago="PUE" FormaPago="01">
+    <cfdi:Emisor Rfc="ABCD010101XYZ" Nombre="Emisor SA" RegimenFiscal="601"/>
+    <cfdi:Receptor Rfc="TEST010101XXX" Nombre="Receptor" UsoCFDI="G01"/>
+    <cfdi:Conceptos>
+        <cfdi:Concepto ClaveProdServ="01010101" Descripcion="Producto 1" Cantidad="1" ValorUnitario="1000.50" Importe="1000.50" Descuento="0">
+            <cfdi:Impuestos>
+                <cfdi:Traslados>
+                    <cfdi:Traslado Impuesto="002" TasaOCuota="0.160000" Importe="160.08"/>
+                </cfdi:Traslados>
+            </cfdi:Impuestos>
+        </cfdi:Concepto>
+    </cfdi:Conceptos>
+    <cfdi:Impuestos TotalImpuestosTrasladados="160.08">
+        <cfdi:Traslados>
+            <cfdi:Traslado Impuesto="002" TasaOCuota="0.160000" Importe="160.08"/>
+        </cfdi:Traslados>
+    </cfdi:Impuestos>
+</cfdi:Comprobante>
