@@ -1,51 +1,85 @@
-from fastapi import FastAPI, HTTPException, Depends, Request, Query, UploadFile, File
+from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File, Query
 from fastapi.security import OAuth2PasswordBearer
 from datetime import timedelta, datetime
 from .auth import authenticate_user, create_access_token, create_user, ACCESS_TOKEN_EXPIRE_MINUTES
-from .models import UserCredentials, UserRegister, Token, CFDIFilter, CFDISort, PaginatedCFDIResponse, CFDIFilter, CFDISort
+from .models import UserCredentials, UserRegister, Token, CFDIFilter, CFDISort, PaginatedCFDIResponse, CFDIResponse
 from .middleware import auth_middleware
 from prisma import Prisma
 import jwt
-from .auth import SECRET_KEY, ALGORITHM
 import xml.etree.ElementTree as ET
-from typing import Optional, List
-import lxml.etree as lxml_etree
-import logging
+from .auth import SECRET_KEY, ALGORITHM
 import base64
 
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-
 app = FastAPI(title="Web API Fiscal")
+
+# Inicializar cliente Prisma como singleton
+db = Prisma(auto_register=True)  # Auto-registra y mantiene la conexión viva
+
+# Añade el middleware de autenticación
 app.middleware("http")(auth_middleware)
+
+# OAuth2 para manejar el token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+@app.on_event("startup")
+async def startup():
+    await db.connect()  # Conectar al iniciar la aplicación
+
+@app.on_event("shutdown")
+async def shutdown():
+    await db.disconnect()  # Desconectar al cerrar la aplicación
 
 @app.post("/auth/register", response_model=Token)
 async def register(user: UserRegister):
+    """
+    Registra un nuevo contribuyente y devuelve un token JWT.
+    """
     try:
-        new_user = await create_user(rfc=user.rfc, password=user.password, role_id=1)
+        new_user = await create_user(
+            rfc=user.rfc,
+            password=user.password,
+            role_id=1
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = await create_access_token(data={"sub": new_user["rfc"], "role_id": new_user["role_id"]}, expires_delta=access_token_expires)
+    access_token = await create_access_token(
+        data={"sub": new_user["rfc"], "role_id": new_user["role_id"]},
+        expires_delta=access_token_expires
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/auth/login", response_model=Token)
 async def login(credentials: UserCredentials):
+    """
+    Autentica al contribuyente y devuelve un token JWT.
+    """
     user = await authenticate_user(credentials.rfc, credentials.password)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect RFC or password")
+    
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = await create_access_token(data={"sub": user["rfc"], "role_id": user["role_id"]}, expires_delta=access_token_expires)
+    access_token = await create_access_token(
+        data={"sub": user["rfc"], "role_id": user["role_id"]},
+        expires_delta=access_token_expires
+    )
     return {"access_token": access_token, "token_type": "bearer"}
 
 @app.post("/auth/logout")
 async def logout(request: Request):
+    """
+    Invalida todos los tokens JWT del usuario eliminándolos de la base de datos.
+    """
     token = request.headers.get("Authorization")
-    if not token or not token.startswith("Bearer "):
-        raise HTTPException(status_code=401, detail="Token missing or invalid format")
+    if not token:
+        raise HTTPException(status_code=401, detail="Token missing")
+    
+    if not token.startswith("Bearer "):
+        raise HTTPException(status_code=400, detail="Invalid token format")
+    
     token = token.replace("Bearer ", "")
+    
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_rfc = payload.get("sub")
@@ -53,35 +87,21 @@ async def logout(request: Request):
             raise HTTPException(status_code=400, detail="Invalid token payload")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    prisma = Prisma()
-    await prisma.connect()
     try:
         # Marcar el token como revocado en lugar de eliminarlo
-        await prisma.authtoken.update_many(
-            where={"token": token, "user_id": user_rfc, "revoke_at": None},
-            data={"revoke_at": datetime.now()}
+        await db.authtoken.update_many(
+            where={"token": token, "user_id": user_rfc, "revoked_at": None},
+            data={"revoked_at": datetime.now()}
         )
         return {"message": "Successfully logged out"}
-    finally:
-        await prisma.disconnect()
-
-@app.get("/cfdi", response_model=PaginatedCFDIResponse)
-async def get_cfdis(request: Request, filters: CFDIFilter = Depends(), sort: CFDISort = Depends(), page: int = Query(1, ge=1), page_size: int = Query(10, ge=1, le=100)):
-    user_rfc = request.state.user["sub"]
-    prisma = Prisma()
-    await prisma.connect()
-    try:
-        where_conditions = {"user_id": user_rfc}
-        if filters.start_date: where_conditions["issue_date"] = {"gte": filters.start_date}
-        if filters.end_date: where_conditions["issue_date"] = {"lte": filters.end_date}
-        if filters.status: where_conditions["status"] = filters.status
-        if filters.type: where_conditions["type"] = filters.type
-        total = await prisma.cfdi.count(where=where_conditions)
-        cfdis = await prisma.cfdi.find_many(where=where_conditions, order={sort.field: sort.direction}, skip=(page - 1) * page_size, take=page_size)
-        cfdi_list = [{"id": cfdi.id, "uuid": cfdi.uuid, "issue_date": cfdi.issue_date, "payment_method": cfdi.payment_method, "currency": cfdi.currency, "type": cfdi.type, "total": cfdi.total, "subtotal": cfdi.subtotal, "user_id": cfdi.user_id, "payment_form": cfdi.payment_form, "issuer_id": cfdi.issuer_id, "cfdi_use": cfdi.cfdi_use} for cfdi in cfdis]
-        return {"items": cfdi_list, "total": total, "page": page, "page_size": page_size}
-    finally:
-        await prisma.disconnect()
+    # Esto elimina el token
+    # try:
+    #     await db.authtoken.delete_many(
+    #         where={"user_id": user_rfc}
+    #     )
+    #     return {"message": "Successfully logged out"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error logging out: {str(e)}")
 
 @app.get("/cfdi", response_model=PaginatedCFDIResponse)
 async def get_cfdis(
@@ -89,24 +109,48 @@ async def get_cfdis(
     filters: CFDIFilter = Depends(),
     sort: CFDISort = Depends(),
     page: int = Query(1, ge=1),
-    page_size: int = Query(10, ge=1, le=100),
-    include_details: bool = Query(False)
+    page_size: int = Query(10, ge=1, le=100)
 ):
+    """
+    Consulta los CFDI del usuario autenticado con filtros, paginación y ordenamiento.
+    """
     user_rfc = request.state.user["sub"]
-    prisma = Prisma()
-    await prisma.connect()
+
     try:
         where_conditions = {"user_id": user_rfc}
-        if filters.start_date: where_conditions["issue_date"] = {"gte": filters.start_date}
-        if filters.end_date: where_conditions["issue_date"] = {"lte": filters.end_date}
-        if filters.status: where_conditions["status"] = filters.status
-        if filters.type: where_conditions["type"] = filters.type
-        total = await prisma.cfdi.count(where=where_conditions)
-        cfdis = await prisma.cfdi.find_many(where=where_conditions, order={sort.field: sort.direction}, skip=(page - 1) * page_size, take=page_size)
-        
-        cfdi_list = []
-        for cfdi in cfdis:
-            cfdi_data = {
+
+        # Aplicar filtros
+        if filters.start_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["gte"] = filters.start_date
+        if filters.end_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["lte"] = filters.end_date
+        if filters.status:
+            where_conditions["status"] = filters.status
+        if filters.type:
+            where_conditions["type"] = filters.type
+        if filters.serie:
+            where_conditions["serie"] = filters.serie
+        if filters.folio:
+            where_conditions["folio"] = filters.folio
+        if filters.issuer_id:
+            where_conditions["issuer_id"] = filters.issuer_id
+
+        total = await db.cfdi.count(where=where_conditions)
+
+        cfdis = await db.cfdi.find_many(
+            where=where_conditions,
+            order={sort.field: sort.direction},
+            skip=(page - 1) * page_size,
+            take=page_size,
+            include={
+                "issuer": True
+            }
+        )
+
+        cfdi_list = [
+            {
                 "id": cfdi.id,
                 "uuid": cfdi.uuid,
                 "version": cfdi.version,
@@ -114,31 +158,31 @@ async def get_cfdis(
                 "folio": cfdi.folio,
                 "issue_date": cfdi.issue_date,
                 "seal": cfdi.seal,
-                "certificate_no": cfdi.certificate_no,
+                "certificate_number": cfdi.certificate_number,
                 "certificate": cfdi.certificate,
                 "place_of_issue": cfdi.place_of_issue,
                 "type": cfdi.type,
-                "currency": cfdi.currency,
                 "total": cfdi.total,
                 "subtotal": cfdi.subtotal,
                 "payment_method": cfdi.payment_method,
                 "payment_form": cfdi.payment_form,
+                "currency": cfdi.currency,
                 "user_id": cfdi.user_id,
                 "issuer_id": cfdi.issuer_id,
-                "cfdi_use": cfdi.cfdi_use,
-                "related_cfdis": cfdi.related_cfdis,
-                "global_info": cfdi.global_info
+                "issuer_name": cfdi.issuer.name_issuer if cfdi.issuer else None,
+                "cfdi_use": cfdi.cfdi_use
             }
-            if include_details:
-                concepts = await prisma.concept.find_many(where={"cfdi_id": cfdi.id})
-                taxes = await prisma.taxes.find_many(where={"concept_id": {"in": [c.id for c in concepts]}})
-                cfdi_data["concepts"] = [{"id": c.id, "fiscal_key": c.fiscal_key, "description": c.description, "quantity": c.quantity, "unit_value": c.unit_value, "amount": c.amount, "discount": c.discount} for c in concepts]
-                cfdi_data["taxes"] = [{"id": t.id, "tax_type": t.tax_type, "rate": t.rate, "amount": t.amount} for t in taxes]
-            cfdi_list.append(cfdi_data)
+            for cfdi in cfdis
+        ]
 
-        return {"items": cfdi_list, "total": total, "page": page, "page_size": page_size}
-    finally:
-        await prisma.disconnect()
+        return {
+            "items": cfdi_list,
+            "total": total,
+            "page": page,
+            "page_size": page_size
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error querying CFDI: {str(e)}")
 
 @app.post("/cfdi/import")
 async def import_cfdi(request: Request, file: UploadFile = File(...)):
@@ -186,21 +230,19 @@ async def import_cfdi(request: Request, file: UploadFile = File(...)):
     if cfdi_data["type"] not in valid_types:
         raise HTTPException(status_code=400, detail="Invalid TipoDeComprobante")
 
-    prisma = Prisma()
-    await prisma.connect()
     try:
         # Verificar si el issuer existe, si no, crearlo
         issuer_rfc = root.find(".//{http://www.sat.gob.mx/cfd/4}Emisor").get("Rfc")
-        issuer = await prisma.issuer.find_unique(where={"rfc_issuer": issuer_rfc})
+        issuer = await db.issuer.find_unique(where={"rfc_issuer": issuer_rfc})
         if not issuer:
-            issuer = await prisma.issuer.create({
+            issuer = await db.issuer.create({
                 "rfc_issuer": issuer_rfc,
                 "name_issuer": root.find(".//{http://www.sat.gob.mx/cfd/4}Emisor").get("Nombre"),
                 "tax_regime": root.find(".//{http://www.sat.gob.mx/cfd/4}Emisor").get("RegimenFiscal")
             })
 
         # Insertar el CFDI con conexiones a user e issuer
-        cfdi = await prisma.cfdi.create({
+        cfdi = await db.cfdi.create({
             **cfdi_data,
             "user": {"connect": {"rfc": user_rfc}},
             "issuer": {"connect": {"rfc_issuer": issuer_rfc}}
@@ -218,7 +260,7 @@ async def import_cfdi(request: Request, file: UploadFile = File(...)):
                 "amount": float(concept.get("Importe", 0)),
                 "discount": float(concept.get("Descuento", 0))
             }
-            created_concept = await prisma.concept.create({
+            created_concept = await db.concept.create({
                 **concept_data
             })
 
@@ -232,22 +274,22 @@ async def import_cfdi(request: Request, file: UploadFile = File(...)):
                     "rate": float(tax.get("TasaOCuota", 0)),
                     "amount": float(tax.get("Importe", 0))
                 }
-                await prisma.taxes.create({
+                await db.taxes.create({
                     **tax_data
                 })
 
         # Almacenar el archivo XML como adjunto codificado en Base64
-        await prisma.cfdiattachment.create({
+        await db.cfdiattachment.create({
             "cfdi_id": cfdi.id,
             "file_type": "xml",
-            "file_content": base64.b64encode(xml_content).decode('utf-8')  # Codificar a Base64
+            "file_content": base64.b64encode(xml_content).decode('utf-8')
         })
 
         # Procesar relaciones (si aplica, por ejemplo, para E o P)
         related_cfdis = root.find(".//{http://www.sat.gob.mx/cfd/4}CfdiRelacionados")
         if related_cfdis is not None:
             for related in related_cfdis.findall(".//{http://www.sat.gob.mx/cfd/4}CfdiRelacionado"):
-                await prisma.cfdirelation.create({
+                await db.cfdirelation.create({
                     "cfdi_id": cfdi.id,
                     "related_uuid": related.get("UUID"),
                     "relation_type": related_cfdis.get("TipoRelacion", "01")
@@ -256,5 +298,3 @@ async def import_cfdi(request: Request, file: UploadFile = File(...)):
         return {"message": "CFDI imported successfully", "uuid": cfdi.uuid}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error importing CFDI: {str(e)}")
-    finally:
-        await prisma.disconnect()
