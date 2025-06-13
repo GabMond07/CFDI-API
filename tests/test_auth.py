@@ -4,11 +4,12 @@ from prisma import Prisma
 from datetime import datetime, timedelta
 import jwt
 from src.auth import SECRET_KEY, ALGORITHM
+import os
 
 client = TestClient(app)
 
 def test_register_success():
-    response = client.post("/auth/register", json={"rfc": "XAXX010101XXX", "password": "securepassword123"})
+    response = client.post("/auth/register", json={"rfc": "EFGH010101XXX", "password": "securepassword123"})
     assert response.status_code == 200
     assert "access_token" in response.json()
     assert response.json()["token_type"] == "bearer"
