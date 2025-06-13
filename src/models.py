@@ -24,6 +24,9 @@ class CFDIFilter(BaseModel):
     end_date: Optional[datetime] = None
     status: Optional[Literal["emitido", "cancelado"]] = None
     type: Optional[Literal["I", "E", "T", "N", "P", "R"]] = None
+    serie: Optional[str] = None
+    folio: Optional[str] = None
+    issuer_id: Optional[str] = None
 
 class CFDISort(BaseModel):
     field: Literal["issue_date", "total"] = "issue_date"
@@ -48,6 +51,7 @@ class CFDIResponse(BaseModel):
     currency: Optional[str]
     user_id: str
     issuer_id: str
+    issuer_name: Optional[str]
     cfdi_use: Optional[str]
 
 class PaginatedCFDIResponse(BaseModel):
