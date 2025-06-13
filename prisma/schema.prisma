@@ -48,16 +48,24 @@ model Issuer {
 model CFDI {
     id           BigInt   @id @default(autoincrement())
     uuid         String   @unique @db.VarChar(36)
+    version      String   @default("4.0") @db.VarChar(10) // Versión del CFDI
+    serie        String?  @db.VarChar(25) // Opcional
+    folio        String?  @db.VarChar(25) // Opcional
     issue_date   DateTime @db.Timestamptz
-    payment_method String? @db.VarChar(50)
-    currency     String?  @db.VarChar(10)
-    type         String   @db.VarChar(20)
+    seal         String?  @db.Text // Sello digital
+    certificate_number String? @db.VarChar(20) // NoCertificado
+    certificate String?  @db.Text // Certificado
+    place_of_issue String? @db.VarChar(100) // LugarExpedicion
+    type         String   @db.VarChar(20) // I, E, T, N, P, R
     total        Float
     subtotal     Float
-    user_id      String   @db.VarChar(13)
+    payment_method String? @db.VarChar(50)
     payment_form String?  @db.VarChar(50)
+    currency     String?  @db.VarChar(10)
+    user_id      String   @db.VarChar(13)
     issuer_id    String   @db.VarChar(13)
     cfdi_use     String?  @db.VarChar(50)
+    related_cfdis CFDIRelation[] // Relación con otros CFDI (para E, P)
     user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
     issuer       Issuer   @relation(fields: [issuer_id], references: [rfc_issuer], onDelete: Restrict, onUpdate: Cascade)
     attachments  CFDIAttachment[]
@@ -71,7 +79,7 @@ model CFDIAttachment {
     id           BigInt   @id @default(autoincrement())
     cfdi_id      BigInt
     file_type    String   @db.VarChar(10)
-    file_content Bytes
+    file_content String   @db.Text
     created_at   DateTime @default(now()) @db.Timestamptz
     cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
@@ -102,4 +110,15 @@ model Taxes {
     concept      Concept  @relation(fields: [concept_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
     @@index([concept_id])
+}
+
+model CFDIRelation {
+    id           BigInt   @id @default(autoincrement())
+    cfdi_id      BigInt
+    related_uuid String   @db.VarChar(36) // UUID del CFDI relacionado
+    relation_type String  @db.VarChar(10) // Ejemplo: "01" (Nota de crédito)
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([cfdi_id])
+    @@unique([cfdi_id, related_uuid]) // Evitar duplicados
 }
