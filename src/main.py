@@ -1,5 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File, Query
 from fastapi.security import OAuth2PasswordBearer
+from fastapi.responses import FileResponse
 from datetime import timedelta, datetime
 from .auth import authenticate_user, create_access_token, create_user, ACCESS_TOKEN_EXPIRE_MINUTES
 from .models import UserCredentials, UserRegister, Token, CFDIFilter, CFDISort, PaginatedCFDIResponse, CFDIResponse
@@ -10,7 +11,7 @@ import xml.etree.ElementTree as ET
 from .auth import SECRET_KEY, ALGORITHM
 import base64
 
-app = FastAPI(title="Web API Fiscal")
+app = FastAPI(title="Web API Fiscal", description="API para la gestión de CFDI y autenticación de contribuyentes.", version="1.0.0")
 
 # Inicializar cliente Prisma como singleton
 db = Prisma(auto_register=True)  # Auto-registra y mantiene la conexión viva
@@ -29,7 +30,7 @@ async def startup():
 async def shutdown():
     await db.disconnect()  # Desconectar al cerrar la aplicación
 
-@app.post("/auth/register", response_model=Token)
+@app.post("/auth/register", response_model=Token, tags=["Authentication"])
 async def register(user: UserRegister):
     """
     Registra un nuevo contribuyente y devuelve un token JWT.
@@ -50,7 +51,7 @@ async def register(user: UserRegister):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/auth/login", response_model=Token)
+@app.post("/auth/login", response_model=Token, tags=["Authentication"])
 async def login(credentials: UserCredentials):
     """
     Autentica al contribuyente y devuelve un token JWT.
@@ -66,7 +67,7 @@ async def login(credentials: UserCredentials):
     )
     return {"access_token": access_token, "token_type": "bearer"}
 
-@app.post("/auth/logout")
+@app.post("/auth/logout", tags=["Authentication"])
 async def logout(request: Request):
     """
     Invalida todos los tokens JWT del usuario eliminándolos de la base de datos.
@@ -103,7 +104,7 @@ async def logout(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error logging out: {str(e)}")
 
-@app.get("/cfdi", response_model=PaginatedCFDIResponse)
+@app.get("/cfdi", response_model=PaginatedCFDIResponse, tags=["CFDI"])
 async def get_cfdis(
     request: Request,
     filters: CFDIFilter = Depends(),
@@ -184,7 +185,7 @@ async def get_cfdis(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error querying CFDI: {str(e)}")
 
-@app.post("/cfdi/import")
+@app.post("/cfdi/import", tags=["CFDI"])
 async def import_cfdi(request: Request, file: UploadFile = File(...)):
     """
     Importa un CFDI a partir de un archivo XML subido por el contribuyente.
@@ -298,3 +299,44 @@ async def import_cfdi(request: Request, file: UploadFile = File(...)):
         return {"message": "CFDI imported successfully", "uuid": cfdi.uuid}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error importing CFDI: {str(e)}")
+
+@app.get("/cfdi/{uuid}/download", tags=["CFDI"])
+async def download_cfdi(request: Request, uuid: str):
+    """
+    Descarga el archivo XML de un CFDI previamente importado.
+
+    - **uuid**: Identificador único del CFDI.
+    """
+    user_rfc = request.state.user["sub"]
+
+    try:
+        # Buscar el CFDI
+        cfdi = await db.cfdi.find_unique(
+            where={"uuid": uuid},
+            include={"user": True, "attachments": True}
+        )
+        if not cfdi:
+            raise HTTPException(status_code=404, detail="CFDI not found")
+
+        # Verificar que el CFDI pertenece al usuario autenticado
+        if cfdi.user.rfc != user_rfc:
+            raise HTTPException(status_code=403, detail="Unauthorized access to CFDI")
+
+        # Obtener el adjunto (debe haber solo uno por CFDI )
+        attachment = cfdi.attachments[0] if cfdi.attachments else None
+        if not attachment or attachment.file_type != "xml":
+            raise HTTPException(status_code=404, detail="No XML attachment found for this CFDI")
+
+        # Decodificar el contenido Base64 a bytes
+        xml_content = base64.b64decode(attachment.file_content)
+
+        # Devolver el archivo como respuesta
+        return FileResponse(
+            path=None,
+            content=xml_content,
+            media_type="application/xml",
+            filename=f"cfdi_{uuid}.xml",
+            headers={"Content-Disposition": f"attachment; filename=cfdi_{uuid}.xml"}
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error downloading CFDI: {str(e)}")
