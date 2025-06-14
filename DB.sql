@@ -1,7 +1,8 @@
 -- Tabla de roles
 CREATE TABLE Roles (
     id SERIAL PRIMARY KEY,
-    role VARCHAR(50) UNIQUE NOT NULL
+    role VARCHAR(50) UNIQUE NOT NULL,
+    permissions JSON
 );
 
 -- Tabla de usuarios
@@ -55,6 +56,7 @@ CREATE TABLE CFDI (
     user_id VARCHAR(13) NOT NULL,
     issuer_id VARCHAR(13) NOT NULL,
     cfdi_use VARCHAR(50),
+    export_status VARCHAR(20),
     FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE,
     FOREIGN KEY (issuer_id) REFERENCES Issuer(rfc_issuer) ON DELETE RESTRICT ON UPDATE CASCADE
 );
@@ -102,6 +104,65 @@ CREATE TABLE CFDIRelation (
     UNIQUE (cfdi_id, related_uuid)
 );
 
+-- Tabla de reportes
+CREATE TABLE Report (
+    id BIGSERIAL PRIMARY KEY,
+    cfdi_id BIGINT NOT NULL,
+    format VARCHAR(10) NOT NULL,
+    file_content TEXT NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    user_id VARCHAR(13) NOT NULL,
+    FOREIGN KEY (cfdi_id) REFERENCES CFDI(id) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabla de visualizaciones
+CREATE TABLE Visualization (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(13) NOT NULL,
+    cfdi_id BIGINT,
+    type VARCHAR(20) NOT NULL,
+    config JSON,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (cfdi_id) REFERENCES CFDI(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabla de notificaciones
+CREATE TABLE Notification (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(13) NOT NULL,
+    cfdi_id BIGINT,
+    type VARCHAR(50) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    payload JSON,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    sent_at TIMESTAMPTZ,
+    FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY (cfdi_id) REFERENCES CFDI(id) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabla de auditoría
+CREATE TABLE AuditLog (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(13),
+    action VARCHAR(100) NOT NULL,
+    details JSON,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- Tabla de trabajos por lotes
+CREATE TABLE BatchJob (
+    id BIGSERIAL PRIMARY KEY,
+    user_id VARCHAR(13) NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    query JSON,
+    result_count INTEGER NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE
+);
+
 -- Índices para optimizar consultas
 CREATE INDEX idx_user_role_id ON "User"(role_id);
 CREATE INDEX idx_cfdi_user_id ON CFDI(user_id);
@@ -110,3 +171,13 @@ CREATE INDEX idx_cfdi_attachment_cfdi_id ON CFDIAttachment(cfdi_id);
 CREATE INDEX idx_concept_cfdi_id ON Concept(cfdi_id);
 CREATE INDEX idx_taxes_concept_id ON Taxes(concept_id);
 CREATE INDEX idx_cfdi_relation_cfdi_id ON CFDIRelation(cfdi_id);
+CREATE INDEX idx_report_cfdi_id ON Report(cfdi_id);
+CREATE INDEX idx_report_user_id ON Report(user_id);
+CREATE INDEX idx_visualization_user_id ON Visualization(user_id);
+CREATE INDEX idx_visualization_cfdi_id ON Visualization(cfdi_id);
+CREATE INDEX idx_notification_user_id ON Notification(user_id);
+CREATE INDEX idx_notification_cfdi_id ON Notification(cfdi_id);
+CREATE INDEX idx_audit_log_user_id ON AuditLog(user_id);
+CREATE INDEX idx_audit_log_created_at ON AuditLog(created_at);
+CREATE INDEX idx_batch_job_user_id ON BatchJob(user_id);
+CREATE INDEX idx_batch_job_created_at ON BatchJob(created_at);
