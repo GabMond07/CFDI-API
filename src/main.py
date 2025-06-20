@@ -1,6 +1,6 @@
 from fastapi import FastAPI, HTTPException, Depends, Request, UploadFile, File, Query
 from fastapi.security import OAuth2PasswordBearer
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 from datetime import timedelta, datetime
 from .auth import authenticate_user, create_access_token, create_user, ACCESS_TOKEN_EXPIRE_MINUTES
 from .models import UserCredentials, UserRegister, Token, CFDIFilter, CFDISort, PaginatedCFDIResponse, CFDIResponse
@@ -10,6 +10,13 @@ import jwt
 import xml.etree.ElementTree as ET
 from .auth import SECRET_KEY, ALGORITHM
 import base64
+import csv
+import io
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
+import pandas as pd
+import numpy as np
+from typing import List, Dict
 
 app = FastAPI(title="Web API Fiscal", description="API para la gestión de CFDI y autenticación de contribuyentes.", version="1.0.0")
 
@@ -38,6 +45,8 @@ async def register(user: UserRegister):
     try:
         new_user = await create_user(
             rfc=user.rfc,
+            username=user.username,
+            email=user.email,
             password=user.password,
             role_id=1
         )
@@ -300,12 +309,10 @@ async def import_cfdi(request: Request, file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error importing CFDI: {str(e)}")
 
-@app.get("/cfdi/{uuid}/download", tags=["CFDI"])
+@app.get("/cfdi/{uuid}/download")
 async def download_cfdi(request: Request, uuid: str):
     """
     Descarga el archivo XML de un CFDI previamente importado.
-
-    - **uuid**: Identificador único del CFDI.
     """
     user_rfc = request.state.user["sub"]
 
@@ -322,7 +329,7 @@ async def download_cfdi(request: Request, uuid: str):
         if cfdi.user.rfc != user_rfc:
             raise HTTPException(status_code=403, detail="Unauthorized access to CFDI")
 
-        # Obtener el adjunto (debe haber solo uno por CFDI )
+        # Obtener el adjunto (debe haber solo uno por CFDI en este diseño)
         attachment = cfdi.attachments[0] if cfdi.attachments else None
         if not attachment or attachment.file_type != "xml":
             raise HTTPException(status_code=404, detail="No XML attachment found for this CFDI")
@@ -340,3 +347,67 @@ async def download_cfdi(request: Request, uuid: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error downloading CFDI: {str(e)}")
+
+@app.post("/cfdi/visualize")
+async def process_data(
+    request: Request,
+    filters: CFDIFilter = Depends(),
+    aggregation: str = Query("sum", regex="^(sum|count|avg|min|max)$"),
+    include_details: bool = Query(False)
+):
+    """
+    Procesa datos de CFDI con transformaciones básicas y joins virtuales.
+    """
+    user_rfc = request.state.user["sub"]
+
+    try:
+        where_conditions = {"user_id": user_rfc}
+        if filters.start_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["gte"] = filters.start_date
+        if filters.end_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["lte"] = filters.end_date
+        if filters.status:
+            where_conditions["status"] = filters.status
+        if filters.type:
+            where_conditions["type"] = filters.type
+        if filters.serie:
+            where_conditions["serie"] = filters.serie
+        if filters.folio:
+            where_conditions["folio"] = filters.folio
+        if filters.issuer_id:
+            where_conditions["issuer_id"] = filters.issuer_id
+
+        cfdis = await db.cfdi.find_many(
+            where=where_conditions,
+            include={"concepts": include_details, "issuer": True}
+        )
+
+        # Agregaciones y transformaciones
+        data = [c for c in cfdis]
+        if aggregation == "sum":
+            result = {"total_amount": sum(cfdi.total for cfdi in data)}
+        elif aggregation == "count":
+            result = {"cfdi_count": len(data)}
+        elif aggregation == "avg":
+            result = {"average_total": sum(cfdi.total for cfdi in data) / len(data) if data else 0}
+        elif aggregation == "min":
+            result = {"min_total": min(cfdi.total for cfdi in data) if data else 0}
+        elif aggregation == "max":
+            result = {"max_total": max(cfdi.total for cfdi in data) if data else 0}
+
+        # Joins virtuales (incluir conceptos si solicitado)
+        if include_details:
+            result["details"] = [
+                {
+                    "uuid": cfdi.uuid,
+                    "total": cfdi.total,
+                    "concepts": [{"description": c.description, "amount": c.amount} for c in cfdi.concepts]
+                }
+                for cfdi in data
+            ]
+
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
