@@ -1,5 +1,6 @@
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
+from typing import Optional
 import jwt
 from prisma import Prisma
 import os
@@ -28,7 +29,7 @@ async def get_user(rfc: str):
     finally:
         await prisma.disconnect()
 
-async def create_user(rfc: str, password: str, role_id: int = 1):  # role_id=1 por defecto (contribuyente)
+async def create_user(rfc: str, username: Optional[str], email: Optional[str], password: str, role_id: int = 1):  # role_id=1 por defecto (contribuyente)
     prisma = Prisma()
     await prisma.connect()
     try:
@@ -42,6 +43,8 @@ async def create_user(rfc: str, password: str, role_id: int = 1):  # role_id=1 p
         user = await prisma.user.create(
             data={
                 "rfc": rfc,
+                "username": username,
+                "email": email,
                 "hashed_password": hashed_password,
                 "role_id": role_id
             }

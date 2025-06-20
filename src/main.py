@@ -356,7 +356,7 @@ async def process_data(
     include_details: bool = Query(False)
 ):
     """
-    Procesa datos de CFDI con transformaciones básicas y joins virtuales.
+    Procesa datos de CFDI para visualización con agregación y desagregación.
     """
     user_rfc = request.state.user["sub"]
 

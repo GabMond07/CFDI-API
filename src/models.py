@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 from typing import Optional, Literal
-from pydantic import FileUrl
+from pydantic import FileUrl, EmailStr
 from datetime import datetime
 
 class UserCredentials(BaseModel):
@@ -14,6 +14,8 @@ class UserRegister(BaseModel):
         description="RFC del usuario con formato válido (ej. XAXX010101XXX)"
     )
     password: str = Field(..., min_length=8, description="Contraseña mínima de 8 caracteres")
+    username: Optional[str] = Field(None, description="Nombre de usuario del contribuyente")
+    email: Optional[EmailStr] = Field(None, description="Email del usuario")
 
 class Token(BaseModel):
     access_token: str = Field(..., description="Token JWT para autenticación")
