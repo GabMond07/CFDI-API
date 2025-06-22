@@ -2,7 +2,7 @@ from fastapi import Request, HTTPException
 import jwt
 from .auth import SECRET_KEY, ALGORITHM
 from prisma import Prisma
-from datetime import datetime
+from datetime import datetime, timezone
 
 async def auth_middleware(request: Request, call_next):
     """
@@ -28,7 +28,7 @@ async def auth_middleware(request: Request, call_next):
                 raise HTTPException(status_code=401, detail="Invalid token")
             if auth_token.revoked_at:
                 raise HTTPException(status_code=401, detail="Token has been revoked")
-            if auth_token.expires_at < datetime.utcnow():
+            if auth_token.expires_at < datetime.now(timezone.utc):
                 raise HTTPException(status_code=401, detail="Token has expired")
         finally:
             await prisma.disconnect()

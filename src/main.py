@@ -7,6 +7,13 @@ from .middleware import auth_middleware
 from prisma import Prisma
 import jwt
 from .auth import SECRET_KEY, ALGORITHM
+from src.router import Consulta
+from src.router import issuer
+from src.router import receiver
+from src.router import concept
+from src.router import tax
+from src.router import tax_summary
+from src.router import payment
 
 app = FastAPI(title="Web API Fiscal")
 
@@ -15,6 +22,20 @@ app.middleware("http")(auth_middleware)
 
 # OAuth2 para manejar el token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+app.include_router(Consulta.router, prefix="/api/v1")
+
+app.include_router(issuer.router, prefix="/api/v1")
+
+app.include_router(receiver.router, prefix="/api/v1")
+
+app.include_router(concept.router, prefix="/api/v1")
+
+app.include_router(tax.router, prefix="/api/v1")
+
+app.include_router(tax_summary.router, prefix="/api/v1")
+
+app.include_router(payment.router, prefix="/api/v1")
 
 @app.post("/auth/register", response_model=Token)
 async def register(user: UserRegister):

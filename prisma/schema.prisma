@@ -1,35 +1,114 @@
 datasource db {
-    provider = "postgresql"
-    url      = env("DATABASE_URL")
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
-    provider = "prisma-client-py"
-    interface = "asyncio"
-    recursive_type_depth = 5
+  provider             = "prisma-client-py"
+  interface            = "asyncio"
+  recursive_type_depth = 5
 }
 
 model Roles {
-    id          Int      @id @default(autoincrement())
-    role        String   @unique // Ejemplo: "contribuyente", "admin"
-    users       User[]   // Relación con User
+  id    Int    @id @default(autoincrement())
+  role  String @unique // Ejemplo: "contribuyente", "admin"
+  users User[] // Relación con User
 }
 
 model User {
-    rfc          String   @id // RFC como identificador principal
-    hashed_password String
-    role_id      Int      // Relación con Roles
-    created_at   DateTime @default(now())
-    role         Roles    @relation(fields: [role_id], references: [id])
-    tokens       AuthToken[] // Relación con AuthToken
+  rfc             String      @id // RFC como identificador principal
+  hashed_password String
+  role_id         Int // Relación con Roles
+  created_at      DateTime    @default(now())
+  role            Roles       @relation(fields: [role_id], references: [id])
+  tokens          AuthToken[] // Relación con AuthToken
+  cfdis           CFDI[]
 }
 
 model AuthToken {
-    id           BigInt   @id @default(autoincrement())
-    token        String   @unique
-    expires_at   DateTime
-    created_at   DateTime @default(now())
-    revoked_at   DateTime? // Para marcar si el token fue revocado
-    user_id      String   // Relación con User (usamos rfc como clave foránea)
-    user         User     @relation(fields: [user_id], references: [rfc])
+  id         BigInt    @id @default(autoincrement())
+  token      String    @unique
+  expires_at DateTime
+  created_at DateTime  @default(now())
+  revoked_at DateTime? // Para marcar si el token fue revocado
+  user_id    String // Relación con User (usamos rfc como clave foránea)
+  user       User      @relation(fields: [user_id], references: [rfc])
+}
+
+model Issuer {
+  Issuer_ID   Int    @id
+  RFC_Issuer  String
+  Name_Issuer String
+  Tax_Regime  String
+  cfdis       CFDI[]
+}
+
+model Receiver {
+  Receiver_ID   Int    @id
+  RFC_Receiver  String
+  Name_Receiver String
+  CFDI_Use      String
+  Tax_Regime    String
+  Tax_Address   String
+  cfdis         CFDI[]
+}
+
+model CFDI {
+  CFDI_ID        Int      @id
+  UUID           Int
+  Issue_Date     DateTime
+  Payment_Method String
+  Currency       String
+  Voucher_Type   String
+  Total          Float
+  Subtotal       Float
+  Payment_Form   String
+
+  User_RFC String
+  user     User   @relation(fields: [User_RFC], references: [rfc])
+
+  Issuer_ID Int
+  issuer    Issuer @relation(fields: [Issuer_ID], references: [Issuer_ID])
+
+  Receiver_ID Int
+  receiver    Receiver @relation(fields: [Receiver_ID], references: [Receiver_ID])
+
+  conceptos Concept[]
+  pagos     PaymentComplement[]
+}
+
+model Concept {
+  Concept_ID  Int    @id
+  CFDI_ID     Int
+  Fiscal_Key  String
+  Description String
+  Quantity    Float
+  Unit_Value  Float
+  Amount      Float
+  Discount    Float
+
+  cfdi      CFDI    @relation(fields: [CFDI_ID], references: [CFDI_ID])
+  impuestos Taxes[]
+}
+
+model Taxes {
+  Tax_ID     Int    @id
+  Concept_ID Int
+  Type       String
+  Tax        String
+  Rate       Float
+  Amount     Float
+
+  concepto Concept @relation(fields: [Concept_ID], references: [Concept_ID])
+}
+
+model PaymentComplement {
+  Payment_ID       Int      @id
+  CFDI_ID          Int
+  Payment_Date     DateTime
+  Payment_Form     String
+  Payment_Currency String
+  Payment_Amount   Float
+
+  cfdi CFDI @relation(fields: [CFDI_ID], references: [CFDI_ID])
 }
