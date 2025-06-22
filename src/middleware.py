@@ -10,9 +10,10 @@ async def auth_middleware(request: Request, call_next):
     Excluye los endpoints de login y registro.
     Verifica si el token está revocado o ha expirado.
     """
-    if request.url.path in ["/auth/login", "/auth/register", "/auth/logout"]:
+    # Excluir rutas de documentación y autenticación pública
+    if request.url.path in ["/docs", "/openapi.json", "/auth/login", "/auth/register", "/auth/logout"]:
         return await call_next(request)
-
+    
     token = request.headers.get("Authorization")
     if not token:
         raise HTTPException(status_code=401, detail="Token missing")

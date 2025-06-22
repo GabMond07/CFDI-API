@@ -4,11 +4,12 @@ from prisma import Prisma
 from datetime import datetime, timedelta
 import jwt
 from src.auth import SECRET_KEY, ALGORITHM
+import os
 
 client = TestClient(app)
 
 def test_register_success():
-    response = client.post("/auth/register", json={"rfc": "XAXX010101XXX", "password": "securepassword123"})
+    response = client.post("/auth/register", json={"rfc": "EFGH010101XXX", "password": "securepassword123"})
     assert response.status_code == 200
     assert "access_token" in response.json()
     assert response.json()["token_type"] == "bearer"
@@ -58,79 +59,37 @@ def test_logout_success():
     assert response.status_code == 200
     assert response.json() == {"message": "Successfully logged out"}
 
+    # Verificar que el token fue revocado
+    prisma = Prisma()
+    prisma.connect()
+    try:
+        auth_token = prisma.authtoken.find_unique(where={"token": token})
+        assert auth_token is not None
+        assert auth_token.revoked_at is not None
+    finally:
+        prisma.disconnect()
+
 def test_logout_missing_token():
     response = client.post("/auth/logout")
     assert response.status_code == 401
     assert response.json() == {"detail": "Token missing"}
 
-def test_logout_already_blacklisted():
+def test_logout_invalid_token():
+    response = client.post("/auth/logout", headers={"Authorization": "Bearer invalidtoken"})
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Invalid token"}
+
+def test_use_revoked_token():
     # Registrar y luego iniciar sesión
     client.post("/auth/register", json={"rfc": "WXYZ010101ABC", "password": "securepassword123"})
     login_response = client.post("/auth/login", json={"rfc": "WXYZ010101ABC", "password": "securepassword123"})
     token = login_response.json()["access_token"]
     
-    # Realizar logout una vez
+    # Realizar logout
     client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
-    # Intentar logout de nuevo con el mismo token
+    
+    # Intentar usar el token revocado (si tuvieras un endpoint protegido)
+    # Por ahora, verificamos directamente en el middleware
     response = client.post("/auth/logout", headers={"Authorization": f"Bearer {token}"})
-    assert response.status_code == 400
-    assert response.json() == {"detail": "Token already blacklisted"}
-
-def test_clean_expired_tokens():
-    # Crear un token con una fecha de expiración en el pasado
-    prisma = Prisma()
-    prisma.connect()
-    try:
-        # Generar un token manualmente con exp en el pasado
-        expired_token = jwt.encode(
-            {
-                "sub": "TEST010101EXP",
-                "role": "contribuyente",
-                "tenant_id": None,
-                "exp": int((datetime.utcnow() - timedelta(minutes=1)).timestamp())
-            },
-            SECRET_KEY,
-            algorithm=ALGORITHM
-        )
-        
-        # Añadir el token a la lista negra
-        prisma.blacklistedtoken.create(
-            data={
-                "token": expired_token,
-                "expires_at": datetime.utcnow() - timedelta(minutes=1)
-            }
-        )
-        
-        # Generar un token que no ha expirado
-        valid_token = jwt.encode(
-            {
-                "sub": "TEST010101VAL",
-                "role": "contribuyente",
-                "tenant_id": None,
-                "exp": int((datetime.utcnow() + timedelta(minutes=1)).timestamp())
-            },
-            SECRET_KEY,
-            algorithm=ALGORITHM
-        )
-        
-        # Añadir el token a la lista negra
-        prisma.blacklistedtoken.create(
-            data={
-                "token": valid_token,
-                "expires_at": datetime.utcnow() + timedelta(minutes=1)
-            }
-        )
-        
-        # Ejecutar la limpieza
-        from auth import clean_expired_tokens
-        asyncio.run(clean_expired_tokens())
-        
-        # Verificar que el token expirado fue eliminado
-        expired_found = prisma.blacklistedtoken.find_unique(where={"token": expired_token})
-        assert expired_found is None
-        
-        # Verificar que el token válido aún existe
-        valid_found = prisma.blacklistedtoken.find_unique(where={"token": valid_token})
-        assert valid_found is not None
-    finally:
-        prisma.disconnect()
+    assert response.status_code == 401
+    assert response.json() == {"detail": "Token has been revoked"}

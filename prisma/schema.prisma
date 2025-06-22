@@ -1,114 +1,203 @@
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+    provider = "postgresql"
+    url      = env("DATABASE_URL")
 }
 
 generator client {
-  provider             = "prisma-client-py"
-  interface            = "asyncio"
-  recursive_type_depth = 5
+    provider = "prisma-client-py"
+    interface = "asyncio"
+    recursive_type_depth = 5
 }
 
 model Roles {
-  id    Int    @id @default(autoincrement())
-  role  String @unique // Ejemplo: "contribuyente", "admin"
-  users User[] // Relación con User
+    id          Int      @id @default(autoincrement())
+    role        String   @db.VarChar(50) @unique
+    permissions Json?    
+    users       User[]
 }
 
 model User {
-  rfc             String      @id // RFC como identificador principal
-  hashed_password String
-  role_id         Int // Relación con Roles
-  created_at      DateTime    @default(now())
-  role            Roles       @relation(fields: [role_id], references: [id])
-  tokens          AuthToken[] // Relación con AuthToken
-  cfdis           CFDI[]
+    rfc          String   @id @db.VarChar(13)
+    username     String?  @db.VarChar(100)
+    email        String?  @db.VarChar(150)
+    hashed_password String @db.VarChar(255)
+    role_id      Int
+    created_at   DateTime @default(now()) @db.Timestamptz
+    role         Roles    @relation(fields: [role_id], references: [id])
+    cfdis        CFDI[]
+    tokens       AuthToken[]
+    notifications Notification[]
+    audit_logs   AuditLog[]
+    reports      Report[]
+    visualizations Visualization[]
+    batch_jobs   BatchJob[]
 }
 
 model AuthToken {
-  id         BigInt    @id @default(autoincrement())
-  token      String    @unique
-  expires_at DateTime
-  created_at DateTime  @default(now())
-  revoked_at DateTime? // Para marcar si el token fue revocado
-  user_id    String // Relación con User (usamos rfc como clave foránea)
-  user       User      @relation(fields: [user_id], references: [rfc])
+    id           BigInt   @id @default(autoincrement())
+    token        String   @unique @db.VarChar(255)
+    expires_at   DateTime @db.Timestamptz
+    created_at   DateTime @default(now()) @db.Timestamptz
+    revoked_at   DateTime?
+    user_id      String   @db.VarChar(13)
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model Issuer {
-  Issuer_ID   Int    @id
-  RFC_Issuer  String
-  Name_Issuer String
-  Tax_Regime  String
-  cfdis       CFDI[]
-}
-
-model Receiver {
-  Receiver_ID   Int    @id
-  RFC_Receiver  String
-  Name_Receiver String
-  CFDI_Use      String
-  Tax_Regime    String
-  Tax_Address   String
-  cfdis         CFDI[]
+    rfc_issuer   String   @id @db.VarChar(13)
+    name_issuer  String?  @db.VarChar(150)
+    tax_regime   String?  @db.VarChar(100)
+    cfdis        CFDI[]
+    created_at   DateTime @default(now()) @db.Timestamptz
 }
 
 model CFDI {
-  CFDI_ID        Int      @id
-  UUID           Int
-  Issue_Date     DateTime
-  Payment_Method String
-  Currency       String
-  Voucher_Type   String
-  Total          Float
-  Subtotal       Float
-  Payment_Form   String
+    id           BigInt   @id @default(autoincrement())
+    uuid         String   @unique @db.VarChar(36)
+    version      String   @default("4.0") @db.VarChar(10)
+    serie        String?  @db.VarChar(25)
+    folio        String?  @db.VarChar(25)
+    issue_date   DateTime @db.Timestamptz
+    seal         String?  @db.Text
+    certificate_number String? @db.VarChar(20)
+    certificate String?  @db.Text
+    place_of_issue String? @db.VarChar(100)
+    type         String   @db.VarChar(20)
+    total        Float
+    subtotal     Float
+    payment_method String? @db.VarChar(50)
+    payment_form String?  @db.VarChar(50)
+    currency     String?  @db.VarChar(10)
+    user_id      String   @db.VarChar(13)
+    issuer_id    String   @db.VarChar(13)
+    cfdi_use     String?  @db.VarChar(50)
+    export_status String? @db.VarChar(20) 
+    related_cfdis CFDIRelation[]
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    issuer       Issuer   @relation(fields: [issuer_id], references: [rfc_issuer], onDelete: Restrict, onUpdate: Cascade)
+    attachments  CFDIAttachment[]
+    concepts     Concept[]
+    reports      Report[]
+    visualizations Visualization[]
+    notifications Notification[]
 
-  User_RFC String
-  user     User   @relation(fields: [User_RFC], references: [rfc])
+    @@index([user_id])
+    @@index([issue_date])
+}
 
-  Issuer_ID Int
-  issuer    Issuer @relation(fields: [Issuer_ID], references: [Issuer_ID])
+model CFDIAttachment {
+    id           BigInt   @id @default(autoincrement())
+    cfdi_id      BigInt
+    file_type    String   @db.VarChar(10)
+    file_content String   @db.Text
+    created_at   DateTime @default(now()) @db.Timestamptz
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  Receiver_ID Int
-  receiver    Receiver @relation(fields: [Receiver_ID], references: [Receiver_ID])
-
-  conceptos Concept[]
-  pagos     PaymentComplement[]
+    @@index([cfdi_id])
 }
 
 model Concept {
-  Concept_ID  Int    @id
-  CFDI_ID     Int
-  Fiscal_Key  String
-  Description String
-  Quantity    Float
-  Unit_Value  Float
-  Amount      Float
-  Discount    Float
+    id           BigInt   @id @default(autoincrement())
+    cfdi_id      BigInt
+    fiscal_key   String?  @db.VarChar(50)
+    description  String?  @db.Text
+    quantity     Float
+    unit_value   Float
+    amount       Float
+    discount     Float    @default(0)
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    taxes        Taxes[]
 
-  cfdi      CFDI    @relation(fields: [CFDI_ID], references: [CFDI_ID])
-  impuestos Taxes[]
+    @@index([cfdi_id])
 }
 
 model Taxes {
-  Tax_ID     Int    @id
-  Concept_ID Int
-  Type       String
-  Tax        String
-  Rate       Float
-  Amount     Float
+    id           BigInt   @id @default(autoincrement())
+    concept_id   BigInt
+    tax_type     String   @db.VarChar(50)
+    rate         Float
+    amount       Float
+    concept      Concept  @relation(fields: [concept_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  concepto Concept @relation(fields: [Concept_ID], references: [Concept_ID])
+    @@index([concept_id])
 }
 
-model PaymentComplement {
-  Payment_ID       Int      @id
-  CFDI_ID          Int
-  Payment_Date     DateTime
-  Payment_Form     String
-  Payment_Currency String
-  Payment_Amount   Float
+model CFDIRelation {
+    id           BigInt   @id @default(autoincrement())
+    cfdi_id      BigInt
+    related_uuid String   @db.VarChar(36)
+    relation_type String  @db.VarChar(10)
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 
-  cfdi CFDI @relation(fields: [CFDI_ID], references: [CFDI_ID])
+    @@index([cfdi_id])
+    @@unique([cfdi_id, related_uuid])
+}
+
+model Report {
+    id           BigInt   @id @default(autoincrement())
+    cfdi_id      BigInt
+    format       String   @db.VarChar(10)
+    file_content String   @db.Text
+    created_at   DateTime @default(now()) @db.Timestamptz
+    user_id      String   @db.VarChar(13)
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([cfdi_id])
+    @@index([user_id])
+}
+
+model Visualization {
+    id           BigInt   @id @default(autoincrement())
+    user_id      String   @db.VarChar(13)
+    cfdi_id      BigInt?  // Opcional
+    type         String   @db.VarChar(20)
+    config       Json?
+    created_at   DateTime @default(now()) @db.Timestamptz
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    cfdi         CFDI?    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([user_id])
+    @@index([cfdi_id])
+}
+
+model Notification {
+    id           BigInt   @id @default(autoincrement())
+    user_id      String   @db.VarChar(13)
+    cfdi_id      BigInt?  // Opcional
+    type         String   @db.VarChar(50)
+    status       String   @db.VarChar(20)
+    payload      Json?
+    created_at   DateTime @default(now()) @db.Timestamptz
+    sent_at      DateTime?
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    cfdi         CFDI?    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([user_id])
+    @@index([cfdi_id])
+}
+
+model AuditLog {
+    id           BigInt   @id @default(autoincrement())
+    user_id      String?  @db.VarChar(13)
+    action       String   @db.VarChar(100)
+    details      Json?
+    created_at   DateTime @default(now()) @db.Timestamptz
+    user         User?    @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([user_id])
+    @@index([created_at])
+}
+
+model BatchJob {
+    id           BigInt   @id @default(autoincrement())
+    user_id      String   @db.VarChar(13)
+    status       String   @db.VarChar(20)
+    query        Json?
+    result_count Int
+    created_at   DateTime @default(now()) @db.Timestamptz
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+
+    @@index([user_id])
+    @@index([created_at])
 }
