@@ -33,7 +33,7 @@ async def test_sin_conceptos(prisma_mock):
 @pytest.mark.asyncio
 @patch("src.service.tax_service.Prisma")
 async def test_con_datos(prisma_mock):
-    filtros = FiltroTax(ordenar_por="Tax_ID", ordenar_dir="asc", pagina=1, por_pagina=10)
+    filtros = FiltroTax(ordenar_por="id", ordenar_dir="asc", pagina=1, por_pagina=10)
     mock_db = AsyncMock()
     prisma_mock.return_value = mock_db
 

@@ -11,7 +11,7 @@ async def test_consultar_receiver_mockeado(prisma_mock):
         nombre="Empresa",
         uso_cfdi="G03",
         regimen="General",
-        ordenar_por="RFC_Receiver",
+        ordenar_por="rfc_receiver",
         ordenar_dir="asc",
         pagina=1,
         por_pagina=5

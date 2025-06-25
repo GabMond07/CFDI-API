@@ -7,10 +7,20 @@ from datetime import datetime
 class FiltroConsulta(BaseModel):
     fecha_inicio: Optional[datetime] = None
     fecha_fin: Optional[datetime] = None
-    categoria: Optional[str] = None
+    uuid: Optional[str] = None
+    serie: Optional[str] = None
+    folio: Optional[str] = None
+    tipo: Optional[str] = None  # type
+    payment_method: Optional[str] = None
+    payment_form: Optional[str] = None
+    currency: Optional[str] = None
+    cfdi_use: Optional[str] = None
+    export_status: Optional[str] = None
+    issuer_id: Optional[str] = None
+    receiver_id: Optional[int] = None
     monto_min: Optional[float] = Field(None, ge=0, description="Monto mínimo no puede ser negativo")
     monto_max: Optional[float] = Field(None, ge=0, description="Monto máximo no puede ser negativo")
-    ordenar_por: Optional[str] = Field("Issue_Date")
+    ordenar_por: Optional[str] = Field("issue_date")
     ordenar_dir: Optional[Literal["asc", "desc"]] = "asc"
     pagina: int = Field(1, ge=1)
     por_pagina: int = Field(10, ge=1, le=100)
@@ -29,7 +39,8 @@ class FiltroConsulta(BaseModel):
             raise HTTPException(status_code=400, detail="El monto mínimo no puede ser mayor que el máximo")
 
         # Validar ordenar_por
-        campos_validos = ["Issue_Date", "Total", "Subtotal"]
+        campos_validos = ["issue_date", "total", "subtotal", "serie",
+            "folio", "uuid", "payment_method", "payment_form", "cfdi_use"]
         if self.ordenar_por not in campos_validos:
             self.ordenar_por = "Issue_Date"  # valor por defecto
 

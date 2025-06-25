@@ -5,12 +5,12 @@ class FiltroIssuer(BaseModel):
     rfc: Optional[str] = None
     nombre: Optional[str] = None
     regimen: Optional[str] = None
-    ordenar_por: Optional[str] = Field("RFC_Issuer")
+    ordenar_por: Optional[str] = Field("rfc_issuer")
     ordenar_dir: Optional[Literal["asc", "desc"]] = "asc"
     pagina: int = Field(1, ge=1)
     por_pagina: int = Field(10, ge=1, le=100)
 
-    campos_validos_ordenar: ClassVar[List[str]] = ["RFC_Issuer", "Name_Issuer", "Tax_Regime"]
+    campos_validos_ordenar: ClassVar[List[str]] = ["rfc_issuer", "name_issuer", "tax_regime"]
 
     @model_validator(mode="after")
     def validar_ordenar_por(self):

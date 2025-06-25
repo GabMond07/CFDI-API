@@ -10,11 +10,11 @@ async def consultar_issuer(filtros: FiltroIssuer, user_rfc: str):
 
         # Buscar CFDIs del usuario autenticado
         cfdis = await db.cfdi.find_many(
-            where={"User_RFC": user_rfc}
+            where={"user_id": user_rfc}
         )
 
         #Extraer IDs únicos de emisores usados por este usuario
-        issuer_ids = list({cfdi.Issuer_ID for cfdi in cfdis})
+        issuer_ids = list({cfdi.issuer_id for cfdi in cfdis})
 
         if not issuer_ids:
            await db.disconnect()
@@ -27,20 +27,20 @@ async def consultar_issuer(filtros: FiltroIssuer, user_rfc: str):
             }
 
         where = {
-            "Issuer_ID": {"in": issuer_ids},       # emisores del usuario
+            "rfc_issuer": {"in": issuer_ids},     # emisores del usuario
             "cfdis": {"some": {}}                  # emisores que hayan emitido CFDIs}
         }
 
         if filtros.rfc:
-            where["RFC_Issuer"] = {"contains": filtros.rfc}
+            where["rfc_issuer"] = {"contains": filtros.rfc}
 
         if filtros.nombre:
-            where["Name_Issuer"] = {"contains": filtros.nombre}
+            where["name_issuer"] = {"contains": filtros.nombre}
 
         if filtros.regimen:
-            where["Tax_Regime"] = {"equals": filtros.regimen}
+            where["tax_regime"] = {"equals": filtros.regimen}
 
-        ordenar_por = filtros.ordenar_por if filtros.ordenar_por in ["RFC_Issuer", "Name_Issuer", "Tax_Regime"] else "RFC_Issuer"
+        ordenar_por = filtros.ordenar_por if filtros.ordenar_por in ["rfc_issuer", "name_issuer", "tax_regime"] else "rfc_issuer"
         ordenar_dir = filtros.ordenar_dir
 
         skip = (filtros.pagina - 1) * filtros.por_pagina

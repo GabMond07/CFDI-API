@@ -8,14 +8,14 @@ def test_filtro_valido():
         monto_min=10,
         monto_max=100,
         cfdi_id=1,
-        ordenar_por="Amount",
+        ordenar_por="amount",
         ordenar_dir="desc",
         pagina=1,
         por_pagina=10,
         solo_con_impuestos=True
     )
     assert filtro.monto_min == 10
-    assert filtro.ordenar_por == "Amount"
+    assert filtro.ordenar_por == "amount"
 
 
 def test_monto_min_negativo():

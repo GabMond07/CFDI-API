@@ -7,7 +7,7 @@ class FiltroReceiver(BaseModel):
     uso_cfdi: Optional[str] = None
     regimen: Optional[str] = None
 
-    ordenar_por: Optional[str] = Field("RFC_Receiver")
+    ordenar_por: Optional[str] = Field("rfc_receiver")
     ordenar_dir: Optional[Literal["asc", "desc"]] = "asc"
 
     pagina: int = Field(1, ge=1)
@@ -15,7 +15,7 @@ class FiltroReceiver(BaseModel):
 
     # Lista de campos válidos para ordenar
     campos_validos_ordenar: ClassVar[List[str]] = [
-        "RFC_Receiver", "Name_Receiver", "CFDI_Use", "Tax_Regime"
+        "rfc_receiver", "name_receiver", "cfdi_use", "tax_regime"
     ]
 
     @model_validator(mode="after")

@@ -8,8 +8,8 @@ async def consultar_conceptos(filtros: FiltroConcept, user_rfc: str):
     try:
         await db.connect()
 
-        cfdis = await db.cfdi.find_many(where={"User_RFC": user_rfc})
-        cfdi_ids = [c.CFDI_ID for c in cfdis]
+        cfdis = await db.cfdi.find_many(where={"user_id": user_rfc})
+        cfdi_ids = [c.id for c in cfdis]
 
         if not cfdi_ids:
             return {
@@ -30,27 +30,42 @@ async def consultar_conceptos(filtros: FiltroConcept, user_rfc: str):
             }
 
         where = {
-            "CFDI_ID": {"in": cfdi_ids}
+            "cfdi_id": {"in": cfdi_ids}
         }
 
         if filtros.description:
-            where["Description"] = {"contains": filtros.description}
+            where["description"] = {"contains": filtros.description}
+        if filtros.fiscal_key:
+            where["fiscal_key"] = {"contains": filtros.fiscal_key}
         if filtros.monto_min is not None:
-            where["Amount"] = {"gte": filtros.monto_min}
+            where["amount"] = {"gte": filtros.monto_min}
         if filtros.monto_max is not None:
-            where.setdefault("Amount", {})["lte"] = filtros.monto_max
-        if filtros.cfdi_id:
-            where["CFDI_ID"] = filtros.cfdi_id
+            where.setdefault("amount", {})["lte"] = filtros.monto_max
+        if filtros.unit_value_min is not None:
+            where.setdefault("unit_value", {})["gte"] = filtros.unit_value_min
+        if filtros.unit_value_max is not None:
+            where.setdefault("unit_value", {})["lte"] = filtros.unit_value_max
+        if filtros.quantity_min is not None:
+            where.setdefault("quantity", {})["gte"] = filtros.quantity_min
+        if filtros.quantity_max is not None:
+            where.setdefault("quantity", {})["lte"] = filtros.quantity_max
+        if filtros.discount_min is not None:
+            where.setdefault("discount", {})["gte"] = filtros.discount_min
+        if filtros.discount_max is not None:
+            where.setdefault("discount", {})["lte"] = filtros.discount_max
 
-        campos_validos = ["Concept_ID", "Description", "Amount", "Quantity", "Unit_Value"]
+        if filtros.cfdi_id:
+            where["cfdi_id"] = filtros.cfdi_id
+
+        campos_validos = ["id", "description", "amount", "quantity", "unit_value", "discount"]
         if filtros.ordenar_por not in campos_validos:
             raise HTTPException(status_code=400, detail=f"Campo inválido para ordenar: {filtros.ordenar_por}")
 
-        # Agrega esta parte al armar el 'where'
+         # Filtro por presencia de impuestos
         if filtros.solo_con_impuestos is True:
-            where["impuestos"] = {"some": {}}
+            where["taxes"] = {"some": {}}
         elif filtros.solo_con_impuestos is False:
-            where["impuestos"] = {"none": {}}
+            where["taxes"] = {"none": {}}
 
         skip = (filtros.pagina - 1) * filtros.por_pagina
         take = filtros.por_pagina
@@ -63,7 +78,7 @@ async def consultar_conceptos(filtros: FiltroConcept, user_rfc: str):
             take=take,
             order={filtros.ordenar_por: filtros.ordenar_dir},
             include={
-                "impuestos": True,
+                "taxes": True,
                 "cfdi": {
                     "include": {
                         "issuer": True,

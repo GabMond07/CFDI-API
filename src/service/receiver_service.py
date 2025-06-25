@@ -10,10 +10,10 @@ async def consultar_receiver(filtros: FiltroReceiver, user_rfc: str):
 
         # Obtener CFDIs del usuario
         cfdis_del_usuario = await db.cfdi.find_many(
-            where={"User_RFC": user_rfc}
+            where={"user_id": user_rfc}
         )
 
-        receptores_ids = list({cfdi.Receiver_ID for cfdi in cfdis_del_usuario})
+        receptores_ids = list({cfdi.receiver_id for cfdi in cfdis_del_usuario if cfdi.receiver_id})
 
         if not receptores_ids:
             return {
@@ -24,19 +24,19 @@ async def consultar_receiver(filtros: FiltroReceiver, user_rfc: str):
                 "datos": []
             }
 
-        where = {"Receiver_ID": {"in": receptores_ids}}
+        where = {"id": {"in": receptores_ids}}
 
         if filtros.rfc:
-            where["RFC_Receiver"] = {"contains": filtros.rfc}
+            where["rfc_receiver"] = {"contains": filtros.rfc}
         if filtros.nombre:
-            where["Name_Receiver"] = {"contains": filtros.nombre}
+            where["name_receiver"] = {"contains": filtros.nombre}
         if filtros.uso_cfdi:
-            where["CFDI_Use"] = {"equals": filtros.uso_cfdi}
+            where["cfdi_use"] = {"equals": filtros.uso_cfdi}
         if filtros.regimen:
-            where["Tax_Regime"] = {"equals": filtros.regimen}
+            where["tax_regime"] = {"equals": filtros.regimen}
 
         # Validar campo de orden
-        campos_validos = ["RFC_Receiver", "Name_Receiver", "CFDI_Use", "Tax_Regime"]
+        campos_validos = ["rfc_receiver", "name_receiver", "cfdi_use", "tax_regime"]
         if filtros.ordenar_por not in campos_validos:
             raise HTTPException(
                 status_code=400,

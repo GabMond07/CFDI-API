@@ -16,6 +16,12 @@ from src.router import concept
 from src.router import tax
 from src.router import tax_summary
 from src.router import payment
+from src.router import cfdi_relation
+from src.router import report
+from src.router import notification
+from src.router import auditlog
+from src.router import batchjob
+
 import base64
 import csv
 import io
@@ -50,6 +56,16 @@ app.include_router(tax_summary.router, prefix="/api/v1")
 
 app.include_router(payment.router, prefix="/api/v1")
 
+app.include_router(cfdi_relation.router, prefix="/api/v1")
+
+app.include_router(report.router, prefix="/api/v1")
+
+app.include_router(notification.router, prefix="/api/v1")
+
+app.include_router(auditlog.router, prefix="/api/v1")
+
+app.include_router(batchjob.router, prefix="/api/v1")
+
 @app.on_event("startup")
 async def startup():
     await db.connect()  # Conectar al iniciar la aplicación
@@ -59,8 +75,6 @@ async def shutdown():
     await db.disconnect()  # Desconectar al cerrar la aplicación
 
 @app.post("/auth/register", response_model=Token, tags=["Authentication"])
-
-@app.post("/auth/register", response_model=Token)
 async def register(user: UserRegister):
     """
     Registra un nuevo contribuyente y devuelve un token JWT.

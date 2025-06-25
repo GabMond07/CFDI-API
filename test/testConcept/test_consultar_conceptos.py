@@ -17,34 +17,44 @@ async def test_sin_cfdi_ids():
         assert resultado["total_resultados"] == 0
         assert resultado["datos"] == []
 
-
 @pytest.mark.asyncio
 async def test_con_datos_filtrados():
     filtros = FiltroConcept(
         pagina=1,
         por_pagina=2,
-        categoria="G03",
-        ordenar_por="Amount",
+        ordenar_por="amount",
         ordenar_dir="asc"
     )
 
-    fake_cfdis_usuario = [type("CFDI", (), {"CFDI_ID": 1})()]
+    # Simula CFDIs del usuario
+    fake_cfdis_usuario = [type("CFDI", (), {"id": 1})()]
+
+    # Simula conceptos devueltos
     fake_resultados = [{
-        "CFDI_ID": 1,
-        "Total": 300,
-        "receiver": {},
-        "issuer": {}
+        "id": 1,
+        "description": "Producto A",
+        "amount": 300.0,
+        "quantity": 2,
+        "unit_value": 150.0,
+        "discount": 0.0,
+        "cfdi": {
+            "issuer": {"rfc": "AAA010101AAA"},
+            "receiver": {"rfc": "BBB010101BBB"}
+        },
+        "taxes": []
     }]
 
     mock_db = AsyncMock()
     mock_db.connect.return_value = None
-    mock_db.cfdi.find_many.side_effect = [fake_cfdis_usuario, fake_resultados]
-    mock_db.cfdi.count.return_value = 1
-    mock_db.disconnect.return_value = None
+    mock_db.cfdi.find_many.return_value = fake_cfdis_usuario
     mock_db.concept.count.return_value = 1
     mock_db.concept.find_many.return_value = fake_resultados
+    mock_db.disconnect.return_value = None
 
     with patch("src.service.concept_service.Prisma", return_value=mock_db):
         resultado = await consultar_conceptos(filtros, "RFC123")
+
         assert resultado["total_resultados"] == 1
-        assert resultado["datos"][0]["Total"] == 300
+        assert len(resultado["datos"]) == 1
+        assert resultado["datos"][0]["amount"] == 300.0
+        assert resultado["datos"][0]["description"] == "Producto A"

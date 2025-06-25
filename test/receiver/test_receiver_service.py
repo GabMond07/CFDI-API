@@ -8,7 +8,7 @@ def test_modelo_valido_receiver():
         nombre="Empresa de Ejemplo",
         uso_cfdi="G01",
         regimen="General",
-        ordenar_por="RFC_Receiver",
+        ordenar_por="rfc_receiver",  # corregido
         ordenar_dir="asc",
         pagina=1,
         por_pagina=10
@@ -17,8 +17,9 @@ def test_modelo_valido_receiver():
     assert filtro.pagina == 1
 
 def test_ordenar_por_invalido_receiver():
-    with pytest.raises(ValidationError):
+    with pytest.raises(ValidationError) as exc_info:
         FiltroReceiver(ordenar_por="invalido")
+    assert "'ordenar_por' debe ser uno de:" in str(exc_info.value)
 
 def test_paginacion_invalida_receiver():
     with pytest.raises(ValidationError):

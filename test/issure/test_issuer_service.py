@@ -11,37 +11,35 @@ async def test_consultar_issuer_con_mock(prisma_mock):
         rfc="ABC",
         nombre="Empresa",
         regimen="General",
-        ordenar_por="RFC_Issuer",
+        ordenar_por="rfc_issuer",
         ordenar_dir="asc",
         pagina=1,
         por_pagina=5
     )
 
-    # Crear instancia simulada de Prisma y sus métodos mockeados
+    # Instancia simulada de Prisma y sus métodos mockeados
     mock_db = AsyncMock()
     prisma_mock.return_value = mock_db
 
-    # Simular respuesta de cfdi.find_many con emisores del usuario
+    # Simular respuesta de cfdi.find_many con issuer_id del usuario
     mock_db.cfdi.find_many.return_value = [
-        AsyncMock(Issuer_ID=1),
-        AsyncMock(Issuer_ID=2),
+        AsyncMock(issuer_id="ABC123456789"),
+        AsyncMock(issuer_id="XYZ987654321"),
     ]
 
     # Simular respuesta de issuer.count y issuer.find_many
     mock_db.issuer.count.return_value = 2
     mock_db.issuer.find_many.return_value = [
         {
-            "Issuer_ID": 1,
-            "RFC_Issuer": "ABC123456789",
-            "Name_Issuer": "Empresa Mock",
-            "Tax_Regime": "General",
+            "rfc_issuer": "ABC123456789",
+            "name_issuer": "Empresa Mock",
+            "tax_regime": "General",
             "cfdis": []
         },
         {
-            "Issuer_ID": 2,
-            "RFC_Issuer": "XYZ987654321",
-            "Name_Issuer": "Otra Empresa",
-            "Tax_Regime": "Simplificado",
+            "rfc_issuer": "XYZ987654321",
+            "name_issuer": "Otra Empresa",
+            "tax_regime": "Simplificado",
             "cfdis": []
         }
     ]
@@ -55,4 +53,4 @@ async def test_consultar_issuer_con_mock(prisma_mock):
     assert result["por_pagina"] == 5
     assert result["total_resultados"] == 2
     assert len(result["datos"]) == 2
-    assert result["datos"][0]["RFC_Issuer"] == "ABC123456789"
+    assert result["datos"][0]["rfc_issuer"] == "ABC123456789"

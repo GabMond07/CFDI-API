@@ -9,13 +9,13 @@ class FiltroTax(BaseModel):
     amount_min: Optional[float] = Field(None, ge=0, description="El monto mínimo no puede ser negativo")
     amount_max: Optional[float] = Field(None, ge=0, description="El monto máximo no puede ser negativo")
     concept_id: Optional[int] = None
-    ordenar_por: Optional[str] = Field("Tax_ID")
+    ordenar_por: Optional[str] = Field("id")
     ordenar_dir: Optional[Literal["asc", "desc"]] = "asc"
     pagina: int = Field(1, ge=1)
     por_pagina: int = Field(10, ge=1, le=100)
 
     campos_validos_ordenar: ClassVar[List[str]] = [
-        "Tax_ID", "type", "tax", "rate", "amount", "concept_id"
+        "id", "tax_type", "rate", "amount", "concept_id"
     ]
 
     @model_validator(mode="after")

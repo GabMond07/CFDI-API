@@ -9,8 +9,8 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
         await db.connect()
 
         # Obtener CFDIs emitidos por el usuario
-        cfdis = await db.cfdi.find_many(where={"User_RFC": user_rfc})
-        cfdi_ids = [c.CFDI_ID for c in cfdis]
+        cfdis = await db.cfdi.find_many(where={"user_id": user_rfc})
+        cfdi_ids = [c.id for c in cfdis]
 
         if not cfdi_ids:
             return {
@@ -22,8 +22,8 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
             }
 
         # Obtener Concept_IDs de esos CFDIs
-        conceptos = await db.concept.find_many(where={"CFDI_ID": {"in": cfdi_ids}})
-        concept_ids = [c.Concept_ID for c in conceptos]
+        conceptos = await db.concept.find_many(where={"cfdi_id": {"in": cfdi_ids}})
+        concept_ids = [c.id for c in conceptos]
 
         if not concept_ids:
             return {
@@ -45,25 +45,23 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
             }
 
         # Construir filtros
-        where = {"Concept_ID": {"in": concept_ids}}
+        where = {"concept_id": {"in": concept_ids}}
 
         if filtros.type:
-            where["Type"] = {"equals": filtros.type}
-        if filtros.tax:
-            where["Tax"] = {"equals": filtros.tax}
+            where["tax_type"] = filtros.type
         if filtros.rate_min is not None:
-            where.setdefault("Rate", {})["gte"] = filtros.rate_min
+            where.setdefault("rate", {})["gte"] = filtros.rate_min
         if filtros.rate_max is not None:
-            where.setdefault("Rate", {})["lte"] = filtros.rate_max
+            where.setdefault("rate", {})["lte"] = filtros.rate_max
         if filtros.amount_min is not None:
-            where.setdefault("Amount", {})["gte"] = filtros.amount_min
+            where.setdefault("amount", {})["gte"] = filtros.amount_min
         if filtros.amount_max is not None:
-            where.setdefault("Amount", {})["lte"] = filtros.amount_max
+            where.setdefault("amount", {})["lte"] = filtros.amount_max
         if filtros.concept_id:
-            where["Concept_ID"] = {"equals": filtros.concept_id}
+            where["concept_id"] = filtros.concept_id
 
         # Validar campo de ordenamiento
-        campos_validos = ["Tax_ID", "Type", "Tax", "Rate", "Amount", "Concept_ID"]
+        campos_validos = ["id", "tax_type", "rate", "amount", "concept_id"]
         if filtros.ordenar_por not in campos_validos:
             raise HTTPException(
                 status_code=400,
@@ -83,7 +81,7 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
             skip=skip,
             take=take,
             include={
-                "concepto": {
+                "concept": {
                     "include": {
                         "cfdi": {
                             "include": {

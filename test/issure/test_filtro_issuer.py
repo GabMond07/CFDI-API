@@ -7,7 +7,7 @@ def test_modelo_valido():
         rfc="ABC123456789",
         nombre="Empresa X",
         regimen="General",
-        ordenar_por="RFC_Issuer",
+        ordenar_por="rfc_issuer",
         ordenar_dir="asc",
         pagina=2,
         por_pagina=20

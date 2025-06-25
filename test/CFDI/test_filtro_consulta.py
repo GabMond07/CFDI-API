@@ -10,12 +10,12 @@ def test_valid_filtro_consulta():
         fecha_fin=datetime(2024, 12, 31),
         monto_min=100,
         monto_max=500,
-        ordenar_por="Total",
+        ordenar_por="total",
         ordenar_dir="desc",
         pagina=1,
         por_pagina=20
     )
-    assert filtro.ordenar_por == "Total"
+    assert filtro.ordenar_por == "total"
     assert filtro.ordenar_dir == "desc"
 
 def test_fecha_inicio_mayor_a_fecha_fin():

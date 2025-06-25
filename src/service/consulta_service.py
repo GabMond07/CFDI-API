@@ -6,8 +6,8 @@ async def filtrar_cfdi(filtros: FiltroConsulta, user_rfc: str):
     db = Prisma()
     await db.connect()
 
-    cfdis_usuario = await db.cfdi.find_many(where={"User_RFC": user_rfc})
-    cfdi_ids = [c.CFDI_ID for c in cfdis_usuario]
+    cfdis_usuario = await db.cfdi.find_many(where={"user_id": user_rfc})
+    cfdi_ids = [c.id for c in cfdis_usuario]
 
     if not cfdi_ids:
         await db.disconnect()
@@ -20,24 +20,44 @@ async def filtrar_cfdi(filtros: FiltroConsulta, user_rfc: str):
         }
 
     where_clause = {
-        "CFDI_ID": {"in": cfdi_ids}
+        "user_id": user_rfc
     }
 
     # Filtro por fechas
     if filtros.fecha_inicio:
-        where_clause.setdefault("Issue_Date", {})["gte"] = filtros.fecha_inicio
+        where_clause.setdefault("issue_date", {})["gte"] = filtros.fecha_inicio
     if filtros.fecha_fin:
-        where_clause.setdefault("Issue_Date", {})["lte"] = filtros.fecha_fin
-
-    # Filtro por categoría
-    if filtros.categoria:
-        where_clause["receiver"] = {"CFDI_Use": filtros.categoria}
+        where_clause.setdefault("issue_date", {})["lte"] = filtros.fecha_fin
 
     # Filtros por monto
     if filtros.monto_min is not None:
-        where_clause.setdefault("Total", {})["gte"] = filtros.monto_min
+        where_clause.setdefault("total", {})["gte"] = filtros.monto_min
     if filtros.monto_max is not None:
-        where_clause.setdefault("Total", {})["lte"] = filtros.monto_max
+        where_clause.setdefault("total", {})["lte"] = filtros.monto_max
+
+    # Filtros por strings directos
+    if filtros.uuid:
+        where_clause["uuid"] = {"contains": filtros.uuid}
+    if filtros.serie:
+        where_clause["serie"] = {"contains": filtros.serie}
+    if filtros.folio:
+       where_clause["folio"] = {"contains": filtros.folio}
+    if filtros.tipo:
+        where_clause["type"] = filtros.tipo
+    if filtros.payment_method:
+        where_clause["payment_method"] = filtros.payment_method
+    if filtros.payment_form:
+        where_clause["payment_form"] = filtros.payment_form
+    if filtros.currency:
+        where_clause["currency"] = filtros.currency
+    if filtros.cfdi_use:
+        where_clause["cfdi_use"] = filtros.cfdi_use
+    if filtros.export_status:
+        where_clause["export_status"] = filtros.export_status
+    if filtros.issuer_id:
+        where_clause["issuer_id"] = filtros.issuer_id
+    if filtros.receiver_id is not None:
+        where_clause["receiver_id"] = filtros.receiver_id
 
     # Paginación
     skip = (filtros.pagina - 1) * filtros.por_pagina
