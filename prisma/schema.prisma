@@ -52,38 +52,45 @@ model Issuer {
 }
 
 model CFDI {
-    id           BigInt   @id @default(autoincrement())
-    uuid         String   @unique @db.VarChar(36)
-    version      String   @default("4.0") @db.VarChar(10)
-    serie        String?  @db.VarChar(25)
-    folio        String?  @db.VarChar(25)
-    issue_date   DateTime @db.Timestamptz
-    seal         String?  @db.Text
-    certificate_number String? @db.VarChar(20)
-    certificate String?  @db.Text
-    place_of_issue String? @db.VarChar(100)
-    type         String   @db.VarChar(20)
-    total        Float
-    subtotal     Float
-    payment_method String? @db.VarChar(50)
-    payment_form String?  @db.VarChar(50)
-    currency     String?  @db.VarChar(10)
-    user_id      String   @db.VarChar(13)
-    issuer_id    String   @db.VarChar(13)
-    cfdi_use     String?  @db.VarChar(50)
-    export_status String? @db.VarChar(20) 
-    related_cfdis CFDIRelation[]
-    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
-    issuer       Issuer   @relation(fields: [issuer_id], references: [rfc_issuer], onDelete: Restrict, onUpdate: Cascade)
-    attachments  CFDIAttachment[]
-    concepts     Concept[]
-    reports      Report[]
-    visualizations Visualization[]
-    notifications Notification[]
+  id                BigInt   @id @default(autoincrement())
+  uuid              String   @unique @db.VarChar(36)
+  version           String   @default("4.0") @db.VarChar(10)
+  serie             String?  @db.VarChar(25)
+  folio             String?  @db.VarChar(25)
+  issue_date        DateTime @db.Timestamptz
+  seal              String?  @db.Text
+  certificate_number String? @db.VarChar(20)
+  certificate       String?  @db.Text
+  place_of_issue    String?  @db.VarChar(100)
+  type              String   @db.VarChar(20)
+  total             Float
+  subtotal          Float
+  payment_method    String?  @db.VarChar(50)
+  payment_form      String?  @db.VarChar(50)
+  currency          String?  @db.VarChar(10)
+  user_id           String   @db.VarChar(13)
+  issuer_id         String   @db.VarChar(13)
+  receiver_id       Int?
+  cfdi_use          String?  @db.VarChar(50)
+  export_status     String?  @db.VarChar(20)
 
-    @@index([user_id])
-    @@index([issue_date])
+  related_cfdis     CFDIRelation[]
+  user              User      @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+  issuer            Issuer    @relation(fields: [issuer_id], references: [rfc_issuer], onDelete: Restrict, onUpdate: Cascade)
+  receiver          Receiver? @relation(fields: [receiver_id], references: [id], onDelete: SetNull)
+  payment_complements PaymentComplement[]
+
+  attachments       CFDIAttachment[]
+  concepts          Concept[]
+  reports           Report[]
+  visualizations    Visualization[]
+  notifications     Notification[]
+
+  @@index([user_id])
+  @@index([issue_date])
+  @@index([receiver_id])
 }
+
 
 model CFDIAttachment {
     id           BigInt   @id @default(autoincrement())
@@ -201,3 +208,29 @@ model BatchJob {
     @@index([user_id])
     @@index([created_at])
 }
+
+model Receiver {
+  id           Int      @id @default(autoincrement())
+  rfc_receiver String   @db.VarChar(20)
+  name_receiver String? @db.VarChar(150)
+  cfdi_use     String?  @db.VarChar(50)
+  tax_regime   String?  @db.VarChar(100)
+  tax_address  String?  @db.VarChar(255)
+  cfdis        CFDI[]   // relación inversa
+
+  @@map("Receiver")
+}
+
+model PaymentComplement {
+  id               Int      @id @default(autoincrement()) @map("Payment_ID")
+  cfdi_id          BigInt
+  payment_date     DateTime @db.Date
+  payment_form     String?  @db.VarChar(50)
+  payment_currency String?  @db.VarChar(10)
+  payment_amount   Float?
+  cfdi             CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
+
+  @@map("PaymentComplement")
+  @@index([cfdi_id])
+}
+

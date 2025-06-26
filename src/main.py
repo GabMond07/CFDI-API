@@ -9,6 +9,19 @@ from prisma import Prisma
 import jwt
 import xml.etree.ElementTree as ET
 from .auth import SECRET_KEY, ALGORITHM
+from src.router import Consulta
+from src.router import issuer
+from src.router import receiver
+from src.router import concept
+from src.router import tax
+from src.router import tax_summary
+from src.router import payment
+from src.router import cfdi_relation
+from src.router import report
+from src.router import notification
+from src.router import auditlog
+from src.router import batchjob
+
 import base64
 import csv
 import io
@@ -28,6 +41,30 @@ app.middleware("http")(auth_middleware)
 
 # OAuth2 para manejar el token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+app.include_router(Consulta.router, prefix="/api/v1")
+
+app.include_router(issuer.router, prefix="/api/v1")
+
+app.include_router(receiver.router, prefix="/api/v1")
+
+app.include_router(concept.router, prefix="/api/v1")
+
+app.include_router(tax.router, prefix="/api/v1")
+
+app.include_router(tax_summary.router, prefix="/api/v1")
+
+app.include_router(payment.router, prefix="/api/v1")
+
+app.include_router(cfdi_relation.router, prefix="/api/v1")
+
+app.include_router(report.router, prefix="/api/v1")
+
+app.include_router(notification.router, prefix="/api/v1")
+
+app.include_router(auditlog.router, prefix="/api/v1")
+
+app.include_router(batchjob.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup():
@@ -68,7 +105,7 @@ async def login(credentials: UserCredentials):
     user = await authenticate_user(credentials.rfc, credentials.password)
     if not user:
         raise HTTPException(status_code=401, detail="Incorrect RFC or password")
-    
+
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = await create_access_token(
         data={"sub": user["rfc"], "role_id": user["role_id"]},
@@ -89,7 +126,7 @@ async def logout(request: Request):
         raise HTTPException(status_code=400, detail="Invalid token format")
     
     token = token.replace("Bearer ", "")
-    
+
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_rfc = payload.get("sub")
