@@ -16,7 +16,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import pandas as pd
 import numpy as np
-from typing import List, Dict
+from typing import List, Dict, Optional
 
 app = FastAPI(title="Web API Fiscal", description="API para la gestión de CFDI y autenticación de contribuyentes.", version="1.0.0")
 
@@ -356,7 +356,7 @@ async def process_data(
     include_details: bool = Query(False)
 ):
     """
-    Procesa datos de CFDI para visualización con agregación y desagregación.
+    Procesa datos de CFDI con transformaciones básicas
     """
     user_rfc = request.state.user["sub"]
 
@@ -411,3 +411,210 @@ async def process_data(
         return JSONResponse(content=result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error processing data: {str(e)}")
+    
+@app.post("/cfdi/aggregation")
+async def visualize_data(
+    request: Request,
+    filters: CFDIFilter = Depends(),
+    aggregation: str = Query("sum", regex="^(sum|count|avg)$"),
+    group_by: Optional[str] = Query(None, regex="^(type|issue_date|serie)$")
+):
+    """
+    Procesa datos de CFDI para visualización con agregación y desagregación.
+    """
+    user_rfc = request.state.user["sub"]
+
+    try:
+        where_conditions = {"user_id": user_rfc}
+        if filters.start_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["gte"] = filters.start_date
+        if filters.end_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["lte"] = filters.end_date
+        if filters.status:
+            where_conditions["status"] = filters.status
+        if filters.type:
+            where_conditions["type"] = filters.type
+        if filters.serie:
+            where_conditions["serie"] = filters.serie
+        if filters.folio:
+            where_conditions["folio"] = filters.folio
+        if filters.issuer_id:
+            where_conditions["issuer_id"] = filters.issuer_id
+
+        cfdis = await db.cfdi.find_many(
+            where=where_conditions,
+            include={"concepts": True, "issuer": True}
+        )
+
+        data = [c for c in cfdis]
+        if not data:
+            return JSONResponse(content={"message": "No data available"})
+
+        if group_by:
+            grouped_data = {}
+            for cfdi in data:
+                key = getattr(cfdi, group_by)
+                if group_by == "issue_date":
+                    key = key.isoformat() if key else "Unknown"
+                else:
+                    key = key if key else "Unknown"
+                if key not in grouped_data:
+                    grouped_data[key] = []
+                grouped_data[key].append(cfdi.total)
+            result = {
+                "type": "grouped",
+                "data": {
+                    "labels": list(grouped_data.keys()),
+                    "values": [sum(values) for values in grouped_data.values()] if aggregation == "sum" else
+                              [len(values) for values in grouped_data.values()] if aggregation == "count" else
+                              [sum(values) / len(values) if values else 0 for values in grouped_data.values()] if aggregation == "avg" else []
+                }
+            }
+        else:
+            totals = [cfdi.total for cfdi in data]
+            result = {
+                "type": "aggregate",
+                "data": {
+                    "label": "Total",
+                    "value": sum(totals) if aggregation == "sum" else
+                            len(totals) if aggregation == "count" else
+                            sum(totals) / len(totals) if aggregation == "avg" else 0
+                }
+            }
+
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error visualizing data: {str(e)}")
+
+
+# Pendiente -----------------------------------
+@app.post("/cfdi/sets")
+async def set_operations(
+    request: Request,
+    filters1: CFDIFilter = Depends(),
+    filters2: CFDIFilter = Depends(),
+    operation: str = Query("union", regex="^(union|intersection)$")
+):
+    """
+    Realiza operaciones de conjuntos (unión, intersección) entre dos conjuntos de CFDI.
+    """
+    user_rfc = request.state.user["sub"]
+
+    try:
+        # Conjunto 1
+        where1 = {"user_id": user_rfc}
+        if filters1.start_date:
+            where1["issue_date"] = where1.get("issue_date", {})
+            where1["issue_date"]["gte"] = filters1.start_date
+        if filters1.end_date:
+            where1["issue_date"] = where1.get("issue_date", {})
+            where1["issue_date"]["lte"] = filters1.end_date
+        if filters1.type:
+            where1["type"] = filters1.type
+        cfdis1 = {cfdi.uuid async for cfdi in db.cfdi.find_many(where=where1)}
+
+        # Conjunto 2
+        where2 = {"user_id": user_rfc}
+        if filters2.start_date:
+            where2["issue_date"] = where2.get("issue_date", {})
+            where2["issue_date"]["gte"] = filters2.start_date
+        if filters2.end_date:
+            where2["issue_date"] = where2.get("issue_date", {})
+            where2["issue_date"]["lte"] = filters2.end_date
+        if filters2.type:
+            where2["type"] = filters2.type
+        cfdis2 = {cfdi.uuid async for cfdi in db.cfdi.find_many(where=where2)}
+
+        # Operación de conjuntos
+        if operation == "union":
+            result_uuids = cfdis1.union(cfdis2)
+        elif operation == "intersection":
+            result_uuids = cfdis1.intersection(cfdis2)
+
+        result = {"uuids": list(result_uuids)}
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error performing set operation: {str(e)}")
+
+@app.post("/cfdi/central_tendency")
+async def central_tendency(
+    request: Request,
+    filters: CFDIFilter = Depends(),
+    measure: str = Query("avg", regex="^(avg|median|mode)$")
+):
+    """
+    Calcula medidas de tendencia central (promedio, mediana, moda).
+    """
+    user_rfc = request.state.user["sub"]
+
+    try:
+        where_conditions = {"user_id": user_rfc}
+        if filters.start_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["gte"] = filters.start_date
+        if filters.end_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["lte"] = filters.end_date
+        if filters.type:
+            where_conditions["type"] = filters.type
+
+        cfdis = await db.cfdi.find_many(
+            where=where_conditions
+        )
+
+        totals = [cfdi.total for cfdi in cfdis]
+        if not totals:
+            return JSONResponse(content={"message": "No data available"})
+
+        if measure == "avg":
+            result = {"average": np.mean(totals)}
+        elif measure == "median":
+            result = {"median": np.median(totals)}
+        elif measure == "mode":
+            result = {"mode": float(np.argmax(np.bincount([int(x) for x in totals])))}
+
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating central tendency: {str(e)}")
+
+@app.post("/cfdi/statistics")
+async def basic_statistics(
+    request: Request,
+    filters: CFDIFilter = Depends()
+):
+    """
+    Calcula estadísticas básicas (rango, varianza, desviación estándar, coeficiente de variación).
+    """
+    user_rfc = request.state.user["sub"]
+
+    try:
+        where_conditions = {"user_id": user_rfc}
+        if filters.start_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["gte"] = filters.start_date
+        if filters.end_date:
+            where_conditions["issue_date"] = where_conditions.get("issue_date", {})
+            where_conditions["issue_date"]["lte"] = filters.end_date
+        if filters.type:
+            where_conditions["type"] = filters.type
+
+        cfdis = await db.cfdi.find_many(
+            where=where_conditions
+        )
+
+        totals = [cfdi.total for cfdi in cfdis]
+        if not totals:
+            return JSONResponse(content={"message": "No data available"})
+
+        result = {
+            "range": max(totals) - min(totals),
+            "variance": np.var(totals),
+            "std_dev": np.std(totals),
+            "cv": (np.std(totals) / np.mean(totals) * 100) if np.mean(totals) != 0 else 0
+        }
+
+        return JSONResponse(content=result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error calculating statistics: {str(e)}")
