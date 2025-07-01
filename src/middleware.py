@@ -11,7 +11,7 @@ async def auth_middleware(request: Request, call_next):
     Verifica si el token está revocado o ha expirado.
     """
     # Excluir rutas de documentación y autenticación pública
-    if request.url.path in ["/docs", "/openapi.json", "/auth/login", "/auth/register", "/auth/logout"]:
+    if request.url.path in ["/docs", "/openapi.json", "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/logout"]:
         return await call_next(request)
     
     token = request.headers.get("Authorization")

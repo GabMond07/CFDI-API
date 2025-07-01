@@ -10,7 +10,7 @@ class FiltroConsulta(BaseModel):
     uuid: Optional[str] = None
     serie: Optional[str] = None
     folio: Optional[str] = None
-    tipo: Optional[str] = None  # type
+    tipo: Optional[str] = None
     payment_method: Optional[str] = None
     payment_form: Optional[str] = None
     currency: Optional[str] = None

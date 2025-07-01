@@ -21,7 +21,9 @@ from src.router import report
 from src.router import notification
 from src.router import auditlog
 from src.router import batchjob
-
+from src.router import register_user
+from src.router import login_user
+from src.router import logout
 import base64
 import csv
 import io
@@ -30,6 +32,9 @@ from reportlab.pdfgen import canvas
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional
+from src.event_bus.consumer import start_consumer
+import asyncio
+from src.event_bus.consumers.login_consumer import login_event
 
 app = FastAPI(title="Web API Fiscal", description="API para la gestión de CFDI y autenticación de contribuyentes.", version="1.0.0")
 
@@ -66,89 +71,21 @@ app.include_router(auditlog.router, prefix="/api/v1")
 
 app.include_router(batchjob.router, prefix="/api/v1")
 
+app.include_router(register_user.router, prefix="/api/v1")
+
+app.include_router(login_user.router, prefix="/api/v1")
+
+app.include_router(logout.router, prefix="/api/v1")
+
 @app.on_event("startup")
 async def startup():
-    await db.connect()  # Conectar al iniciar la aplicación
+    await db.connect()
+
+    asyncio.create_task(start_consumer("login_exitoso", login_event))
 
 @app.on_event("shutdown")
 async def shutdown():
     await db.disconnect()  # Desconectar al cerrar la aplicación
-
-@app.post("/auth/register", response_model=Token, tags=["Authentication"])
-async def register(user: UserRegister):
-    """
-    Registra un nuevo contribuyente y devuelve un token JWT.
-    """
-    try:
-        new_user = await create_user(
-            rfc=user.rfc,
-            username=user.username,
-            email=user.email,
-            password=user.password,
-            role_id=1
-        )
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = await create_access_token(
-        data={"sub": new_user["rfc"], "role_id": new_user["role_id"]},
-        expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@app.post("/auth/login", response_model=Token, tags=["Authentication"])
-async def login(credentials: UserCredentials):
-    """
-    Autentica al contribuyente y devuelve un token JWT.
-    """
-    user = await authenticate_user(credentials.rfc, credentials.password)
-    if not user:
-        raise HTTPException(status_code=401, detail="Incorrect RFC or password")
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = await create_access_token(
-        data={"sub": user["rfc"], "role_id": user["role_id"]},
-        expires_delta=access_token_expires
-    )
-    return {"access_token": access_token, "token_type": "bearer"}
-
-@app.post("/auth/logout", tags=["Authentication"])
-async def logout(request: Request):
-    """
-    Invalida todos los tokens JWT del usuario eliminándolos de la base de datos.
-    """
-    token = request.headers.get("Authorization")
-    if not token:
-        raise HTTPException(status_code=401, detail="Token missing")
-    
-    if not token.startswith("Bearer "):
-        raise HTTPException(status_code=400, detail="Invalid token format")
-    
-    token = token.replace("Bearer ", "")
-
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        user_rfc = payload.get("sub")
-        if not user_rfc:
-            raise HTTPException(status_code=400, detail="Invalid token payload")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    try:
-        # Marcar el token como revocado en lugar de eliminarlo
-        await db.authtoken.update_many(
-            where={"token": token, "user_id": user_rfc, "revoked_at": None},
-            data={"revoked_at": datetime.now()}
-        )
-        return {"message": "Successfully logged out"}
-    # Esto elimina el token
-    # try:
-    #     await db.authtoken.delete_many(
-    #         where={"user_id": user_rfc}
-    #     )
-    #     return {"message": "Successfully logged out"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error logging out: {str(e)}")
 
 @app.get("/cfdi", response_model=PaginatedCFDIResponse, tags=["CFDI"])
 async def get_cfdis(
