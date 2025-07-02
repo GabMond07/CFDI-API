@@ -16,9 +16,9 @@ async def login_user_service(credentials: UserCredentials):
     )
 
     # Publicar evento exitoso
-    await publish_event("login_exitoso", {
-        "rfc": user["rfc"],
-        "timestamp": str(datetime.utcnow())
-    })
+    #await publish_event("login_exitoso", {
+    #    "rfc": user["rfc"],
+    #    "timestamp": str(datetime.utcnow())
+    #})
 
     return {"access_token": access_token, "token_type": "bearer"}

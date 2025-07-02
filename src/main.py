@@ -32,11 +32,27 @@ from reportlab.pdfgen import canvas
 import pandas as pd
 import numpy as np
 from typing import List, Dict, Optional
-from src.event_bus.consumer import start_consumer
+#from src.event_bus.consumer import start_consumer
 import asyncio
-from src.event_bus.consumers.login_consumer import login_event
+#from src.event_bus.consumers.login_consumer import login_event
+from fastapi.middleware.cors import CORSMiddleware
+from src.middleware import auth_middleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 app = FastAPI(title="Web API Fiscal", description="API para la gestión de CFDI y autenticación de contribuyentes.", version="1.0.0")
+
+# Primero, configura CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Luego agrega tu middleware personalizado
+from .middleware import auth_middleware
+app.middleware("http")(auth_middleware)
 
 # Inicializar cliente Prisma como singleton
 db = Prisma(auto_register=True)  # Auto-registra y mantiene la conexión viva
@@ -81,7 +97,7 @@ app.include_router(logout.router, prefix="/api/v1")
 async def startup():
     await db.connect()
 
-    asyncio.create_task(start_consumer("login_exitoso", login_event))
+    #asyncio.create_task(start_consumer("login_exitoso", login_event))
 
 @app.on_event("shutdown")
 async def shutdown():
