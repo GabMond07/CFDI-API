@@ -34,7 +34,7 @@ import numpy as np
 from typing import List, Dict, Optional
 #from src.event_bus.consumer import start_consumer
 import asyncio
-#from src.event_bus.consumers.login_consumer import login_event
+from src.event_bus.consumers.login_consumer import start_login_consumer
 from fastapi.middleware.cors import CORSMiddleware
 from src.middleware import auth_middleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -96,8 +96,7 @@ app.include_router(logout.router, prefix="/api/v1")
 @app.on_event("startup")
 async def startup():
     await db.connect()
-
-    #asyncio.create_task(start_consumer("login_exitoso", login_event))
+    asyncio.create_task(start_login_consumer())
 
 @app.on_event("shutdown")
 async def shutdown():

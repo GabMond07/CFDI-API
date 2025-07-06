@@ -15,10 +15,9 @@ async def login_user_service(credentials: UserCredentials):
         expires_delta=access_token_expires
     )
 
-    # Publicar evento exitoso
-    #await publish_event("login_exitoso", {
-    #    "rfc": user["rfc"],
-    #    "timestamp": str(datetime.utcnow())
-    #})
+    await publish_event("login_event", {
+        "rfc": user["rfc"],
+        "timestamp": datetime.utcnow().isoformat()
+    })
 
     return {"access_token": access_token, "token_type": "bearer"}
