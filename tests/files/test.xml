@@ -1,19 +1,41 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" UUID="550e8400-e29b-41d4-a716-446655440019" Version="4.0" Serie="A" Folio="1" Fecha="2025-06-12T23:00:00Z" Sello="..." NoCertificado="1234567890" Certificado="..." LugarExpedicion="Ciudad de México" TipoDeComprobante="I" Moneda="MXN" Total="1160.08" SubTotal="1000.50" MetodoPago="PUE" FormaPago="01">
-    <cfdi:Emisor Rfc="ABCD010101XYZ" Nombre="Emisor SA" RegimenFiscal="601"/>
-    <cfdi:Receptor Rfc="TEST010101XXX" Nombre="Receptor" UsoCFDI="G01"/>
+<cfdi:Comprobante 
+    xmlns:cfdi="http://www.sat.gob.mx/cfd/4" 
+    xmlns:xs="http://www.w3.org/2001/XMLSchema" 
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+    xmlns:pago20="http://www.sat.gob.mx/Pagos20"
+    xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd http://www.sat.gob.mx/Pagos20 http://www.sat.gob.mx/sitio_internet/cfd/Pagos20/Pagos20.xsd"
+    Version="4.0" 
+    Serie="A" 
+    Folio="123456" 
+    Fecha="2025-07-03T10:00:00" 
+    Sello="ABC123..." 
+    NoCertificado="12345678901234567890" 
+    Certificado="MII...==" 
+    LugarExpedicion="12345" 
+    TipoDeComprobante="P" 
+    Total="10000.00" 
+    SubTotal="10000.00" 
+    Moneda="MXN" 
+    MetodoPago="PPD" 
+    FormaPago="03">
+    <cfdi:Emisor Rfc="XAXX010101000" Nombre="Empresa Ejemplo SA de CV" RegimenFiscal="601"/>
+    <cfdi:Receptor Rfc="XEXX010101000" Nombre="Cliente Ejemplo" UsoCFDI="P01" RegimenFiscalReceptor="616" DomicilioFiscalReceptor="54321"/>
     <cfdi:Conceptos>
-        <cfdi:Concepto ClaveProdServ="01010101" Descripcion="Producto 1" Cantidad="1" ValorUnitario="1000.50" Importe="1000.50" Descuento="0">
+        <cfdi:Concepto ClaveProdServ="84111506" Cantidad="1" Descripcion="Servicios de facturación" ValorUnitario="10000.00" Importe="10000.00" Descuento="0.00">
             <cfdi:Impuestos>
                 <cfdi:Traslados>
-                    <cfdi:Traslado Impuesto="002" TasaOCuota="0.160000" Importe="160.08"/>
+                    <cfdi:Traslado Base="10000.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="1600.00"/>
                 </cfdi:Traslados>
             </cfdi:Impuestos>
         </cfdi:Concepto>
     </cfdi:Conceptos>
-    <cfdi:Impuestos TotalImpuestosTrasladados="160.08">
-        <cfdi:Traslados>
-            <cfdi:Traslado Impuesto="002" TasaOCuota="0.160000" Importe="160.08"/>
-        </cfdi:Traslados>
-    </cfdi:Impuestos>
+    <cfdi:Complemento>
+        <pago20:Pagos Version="2.0">
+            <pago20:Pago FechaPago="2025-07-03T10:00:00" FormaDePagoP="03" MonedaP="MXN" Monto="10000.00"/>
+        </pago20:Pagos>
+    </cfdi:Complemento>
+    <cfdi:CfdiRelacionados TipoRelacion="01">
+        <cfdi:CfdiRelacionado UUID="123e4567-e89b-12d3-a456-426614174000"/>
+    </cfdi:CfdiRelacionados>
 </cfdi:Comprobante>
