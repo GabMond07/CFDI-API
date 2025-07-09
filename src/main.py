@@ -38,6 +38,7 @@ from src.event_bus.consumers.login_consumer import start_login_consumer
 from fastapi.middleware.cors import CORSMiddleware
 from src.middleware import auth_middleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from src.ml.router import routerCFDI
 
 app = FastAPI(title="Web API Fiscal", description="API para la gestión de CFDI y autenticación de contribuyentes.", version="1.0.0")
 
@@ -92,6 +93,9 @@ app.include_router(register_user.router, prefix="/api/v1")
 app.include_router(login_user.router, prefix="/api/v1")
 
 app.include_router(logout.router, prefix="/api/v1")
+
+app.include_router(routerCFDI.router)
+
 
 @app.on_event("startup")
 async def startup():
