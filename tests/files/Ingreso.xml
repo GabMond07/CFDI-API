@@ -1,73 +1,40 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" 
-                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-                  xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd"
-                  Version="4.0"
-                  UUID="550e8400-e29b-41d4-a716-44665544001412"
-                  Serie="A"
-                  Folio="001"
-                  Fecha="2025-07-03T10:30:00"
-                  Sello="[SELLO_DIGITAL_EMISOR]"
-                  NoSertificado="[NUMERO_CERTIFICADO]"
-                  Certificado="[CERTIFICADO_BASE64]"
-                  SubTotal="10000.00"
-                  Descuento="0.00"
-                  Moneda="MXN"
-                  TipoCambio="1.0"
-                  Total="11600.00"
-                  TipoDeComprobante="I"
-                  Exportacion="01"
-                  MetodoPago="PUE"
-                  FormaPago="04"
-                  LugarExpedicion="06300"
-                  Confirmacion="">
-
-  <cfdi:Emisor Rfc="EKU9003173C9"
-               Nombre="EMPRESA VENDEDORA S.A. DE C.V."
-               RegimenFiscal="601"/>
-
-  <cfdi:Receptor Rfc="XAXX010101000"
-                 Nombre="CLIENTE COMPRADOR S.A. DE C.V."
-                 DomicilioFiscalReceptor="01000"
-                 RegimenFiscalReceptor="601"
-                 UsoCFDI="G03"/>
-
-  <cfdi:Conceptos>
-    <cfdi:Concepto ClaveProdServ="50211503"
-                   NoIdentificacion="PROD-001"
-                   Cantidad="10.00"
-                   ClaveUnidad="H87"
-                   Unidad="Pieza"
-                   Descripcion="Computadora de escritorio marca ABC modelo XYZ"
-                   ValorUnitario="1000.00"
-                   Importe="10000.00"
-                   Descuento="0.00"
-                   ObjetoImp="02">
-      
-      <cfdi:Impuestos>
-        <cfdi:Traslados>
-          <cfdi:Traslado Base="10000.00"
-                         Impuesto="002"
-                         TipoFactor="Tasa"
-                         TasaOCuota="0.160000"
-                         Importe="1600.00"/>
-        </cfdi:Traslados>
-      </cfdi:Impuestos>
-    </cfdi:Concepto>
-  </cfdi:Conceptos>
-
-  <cfdi:Impuestos TotalImpuestosTrasladados="1600.00">
-    <cfdi:Traslados>
-      <cfdi:Traslado Base="10000.00"
-                     Impuesto="002"
-                     TipoFactor="Tasa"
-                     TasaOCuota="0.160000"
-                     Importe="1600.00"/>
-    </cfdi:Traslados>
-  </cfdi:Impuestos>
-
-  <cfdi:Complemento>
-    <!-- TimbreFiscalDigital se agrega después del timbrado -->
-  </cfdi:Complemento>
-
-</cfdi:Comprobante>
+<?xml version='1.0' encoding='utf-8'?>
+<ns0:Comprobante xmlns:ns0="http://www.sat.gob.mx/cfd/4" xmlns:ns2="http://www.sat.gob.mx/TimbreFiscalDigital" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd" Version="4.0" Serie="DAFC" Folio="14058" Fecha="2024-03-30T09:25:24" FormaPago="01" MetodoPago="PUE" Moneda="MXN" TipoCambio="1" SubTotal="285.25" Total="330.88" TipoDeComprobante="I" LugarExpedicion="91700" Exportacion="01" NoCertificado="30001000000500003416" Certificado="MIIFsDCCA5igAwIBAgIUMzAwMDEwMDAwMDA1MDAwMDM0MTYwDQYJKoZIhvcNAQELBQAwggErMQ8wDQYDVQQDDAZBQyBVQVQxLjAsBgNVBAoMJVNFUlZJQ0lPIERFIEFETUlOSVNUUkFDSU9OIFRSSUJVVEFSSUExGjAYBgNVBAsMEVNBVC1JRVMgQXV0aG9yaXR5MSgwJgYJKoZIhvcNAQkBFhlvc2Nhci5tYXJ0aW5lekBzYXQuZ29iLm14MR0wGwYDVQQJDBQzcmEgY2VycmFkYSBkZSBjYWxpejEOMAwGA1UEEQwFMDYzNzAxCzAJBgNVBAYTAk1YMRkwFwYDVQQIDBBDSVVEQUQgREUgTUVYSUNPMREwDwYDVQQHDAhDT1lPQUNBTjERMA8GA1UELRMIMi41LjQuNDUxJTAjBgkqhkiG9w0BCQITFnJlc3BvbnNhYmxlOiBBQ0RNQS1TQVQwHhcNMjMwNTE4MTE0MzUxWhcNMjcwNTE4MTE0MzUxWjCB1zEnMCUGA1UEAxMeRVNDVUVMQSBLRU1QRVIgVVJHQVRFIFNBIERFIENWMScwJQYDVQQpEx5FU0NVRUxBIEtFTVBFUiBVUkdBVEUgU0EgREUgQ1YxJzAlBgNVBAoTHkVTQ1VFTEEgS0VNUEVSIFVSR0FURSBTQSBERSBDVjElMCMGA1UELRMcRUtVOTAwMzE3M0M5IC8gVkFEQTgwMDkyN0RKMzEeMBwGA1UEBRMVIC8gVkFEQTgwMDkyN0hTUlNSTDA1MRMwEQYDVQQLEwpTdWN1cnNhbCAxMIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAtmecO6n2GS0zL025gbHGQVxznPDICoXzR2uUngz4DqxVUC/w9cE6FxSiXm2ap8Gcjg7wmcZfm85EBaxCx/0J2u5CqnhzIoGCdhBPuhWQnIh5TLgj/X6uNquwZkKChbNe9aeFirU/JbyN7Egia9oKH9KZUsodiM/pWAH00PCtoKJ9OBcSHMq8Rqa3KKoBcfkg1ZrgueffwRLws9yOcRWLb02sDOPzGIm/jEFicVYt2Hw1qdRE5xmTZ7AGG0UHs+unkGjpCVeJ+BEBn0JPLWVvDKHZAQMj6s5Bku35+d/MyATkpOPsGT/VTnsouxekDfikJD1f7A1ZpJbqDpkJnss3vQIDAQABox0wGzAMBgNVHRMBAf8EAjAAMAsGA1UdDwQEAwIGwDANBgkqhkiG9w0BAQsFAAOCAgEAFaUgj5PqgvJigNMgtrdXZnbPfVBbukAbW4OGnUhNrA7SRAAfv2BSGk16PI0nBOr7qF2mItmBnjgEwk+DTv8Zr7w5qp7vleC6dIsZFNJoa6ZndrE/f7KO1CYruLXr5gwEkIyGfJ9NwyIagvHHMszzyHiSZIA850fWtbqtythpAliJ2jF35M5pNS+YTkRB+T6L/c6m00ymN3q9lT1rB03YywxrLreRSFZOSrbwWfg34EJbHfbFXpCSVYdJRfiVdvHnewN0r5fUlPtR9stQHyuqewzdkyb5jTTw02D2cUfL57vlPStBj7SEi3uOWvLrsiDnnCIxRMYJ2UA2ktDKHk+zWnsDmaeleSzonv2CHW42yXYPCvWi88oE1DJNYLNkIjua7MxAnkNZbScNw01A6zbLsZ3y8G6eEYnxSTRfwjd8EP4kdiHNJftm7Z4iRU7HOVh79/lRWB+gd171s3d/mI9kte3MRy6V8MMEMCAnMboGpaooYwgAmwclI2XZCczNWXfhaWe0ZS5PmytD/GDpXzkX0oEgY9K/uYo5V77NdZbGAjmyi8cE2B2ogvyaN2XfIInrZPgEffJ4AB7kFA2mwesdLOCh0BLD9itmCve3A1FGR4+stO2ANUoiI3w3Tv2yQSg4bjeDlJ08lXaaFCLW2peEXMXjQUk7fmpb5MNuOUTW6BE=" Sello="C7/kYw5/ZVA+kx0TvwvwlyFvr2kisigOBzDAEeIjl4lhQmD1BPcUfM09ahwq5K27GXJaU0ttsC29+F/b5KwM4om+VOjF+mbXwjX2FJqPr6Bxr9uaFdvLNZaEYQP6FiHpl4J6syLZCnQs4BapMlrjMqb5tlzl+M8CkyEmYRNtW9nW+eLKOFJ+K02Mi/Yvhyk7rjk7PkSh5C+NnspO4HIpvKKhFifoGGBRKO/0DZkV1w3+zURhykXHVODHBNt6/Jt/qIIGYtrs/67e18Tw+dmMQN5VnH9tePRUoMz2ftjbQSbDYUomic2yBXvLccQlj877IPN0Vb10QiJ/ribNTbmrGA==">
+	<ns0:Emisor Rfc="EKU9003173C9" Nombre="ESCUELA KEMPER URGATE" RegimenFiscal="601" />
+	<ns0:Receptor Rfc="XAXX010101000" Nombre="VENTA PUBLICO EN GENERAL" UsoCFDI="S01" DomicilioFiscalReceptor="91700" RegimenFiscalReceptor="616" />
+	<ns0:Conceptos>
+		<ns0:Concepto ClaveProdServ="31211515" NoIdentificacion="C1280274" Cantidad="1" ClaveUnidad="LTR" Unidad="LTS" Descripcion="COMEX 100 PRIMARIO SECADO EXTRA RAPIDO ROJO" ValorUnitario="210.78" Importe="210.78" ObjetoImp="02">
+			<ns0:Impuestos>
+				<ns0:Traslados>
+					<ns0:Traslado Base="210.780000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="33.72" />
+				</ns0:Traslados>
+			</ns0:Impuestos>
+		</ns0:Concepto>
+	<ns0:Concepto ClaveProdServ="31211800" NoIdentificacion="C1330385" Cantidad="1" ClaveUnidad="LTR" Unidad="MED" Descripcion="THINNER ESTANDAR DE PRIMERA PET" ValorUnitario="31.33" Importe="31.33" ObjetoImp="02">
+			<ns0:Impuestos>
+				<ns0:Traslados>
+					<ns0:Traslado Base="31.330000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="5.01" />
+				</ns0:Traslados>
+			</ns0:Impuestos>
+		</ns0:Concepto>
+	<ns0:Concepto ClaveProdServ="31211904" NoIdentificacion="AC268388" Cantidad="1" ClaveUnidad="H87" Unidad="PZA" Descripcion="COMEX BROCHA PLUS 1&quot;" ValorUnitario="18.83" Importe="18.83" ObjetoImp="02">
+			<ns0:Impuestos>
+				<ns0:Traslados>
+					<ns0:Traslado Base="18.830000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="3.01" />
+				</ns0:Traslados>
+			</ns0:Impuestos>
+		</ns0:Concepto>
+	<ns0:Concepto ClaveProdServ="31191501" NoIdentificacion="F2010198" Cantidad="1" ClaveUnidad="H87" Unidad="PZA" Descripcion="LIJA ESMERIL J-73 MEDIANO" ValorUnitario="24.31" Importe="24.31" ObjetoImp="02">
+			<ns0:Impuestos>
+				<ns0:Traslados>
+					<ns0:Traslado Base="24.310000" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="3.89" />
+				</ns0:Traslados>
+			</ns0:Impuestos>
+		</ns0:Concepto>
+	</ns0:Conceptos>
+	<ns0:Impuestos TotalImpuestosTrasladados="45.63">
+		<ns0:Traslados>
+			<ns0:Traslado Base="285.25" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.160000" Importe="45.63" />
+		</ns0:Traslados>
+	</ns0:Impuestos>
+	<ns0:Complemento><ns2:TimbreFiscalDigital xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" Version="1.1" UUID="10a30b1a-d2ed-4fed-87ec-be83cff18c21" FechaTimbrado="2024-03-30T09:26:24" RfcProvCertif="SPR190613I52" SelloCFD="C7/kYw5/ZVA+kx0TvwvwlyFvr2kisigOBzDAEeIjl4lhQmD1BPcUfM09ahwq5K27GXJaU0ttsC29+F/b5KwM4om+VOjF+mbXwjX2FJqPr6Bxr9uaFdvLNZaEYQP6FiHpl4J6syLZCnQs4BapMlrjMqb5tlzl+M8CkyEmYRNtW9nW+eLKOFJ+K02Mi/Yvhyk7rjk7PkSh5C+NnspO4HIpvKKhFifoGGBRKO/0DZkV1w3+zURhykXHVODHBNt6/Jt/qIIGYtrs/67e18Tw+dmMQN5VnH9tePRUoMz2ftjbQSbDYUomic2yBXvLccQlj877IPN0Vb10QiJ/ribNTbmrGA==" NoCertificadoSAT="30001000000500003456" SelloSAT="duvMhri+yGKYy/9zmsZJXhDZf/vyIw4TwO4bOGZpyN1mwv5/9E1UTGIhMsGeMc817ES6Nw/kGVNSR8NKFrCq69LxxrFZ3GkPvwCjZ9M/yapNLGD10/18UOeEVD5niaxF+mgnuAxOfhcqeu/09mqoTDY2O2zI/KcffmnotWaEXWsNjM4ZPpRSDFdVEhHWkHIdclC7sY7QLPoxmg1HhR7diTo3RduXixf/LjTzDScf5unqs7LmSx04jew4JZaKIyosqMvpi/0Gd56ljL125sE+oTzG02w90kN3QbCBhZWxA51mDZfZ6NEniaMOKpFwq9DIiBS/Ni4Wh2lsL7tOBfRnCA==" /></ns0:Complemento></ns0:Comprobante>

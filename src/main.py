@@ -17,7 +17,7 @@ from src.router import register_user
 from src.router import login_user
 from src.router import logout
 from src.router import visualize
-#from src.event_bus.consumer import start_consumer
+from src.router import upload_cfdi
 import asyncio
 from src.event_bus.consumers.login_consumer import start_login_consumer
 from fastapi.middleware.cors import CORSMiddleware
@@ -37,9 +37,6 @@ app.add_middleware(
 
 # Luego agrega tu middleware personalizado
 from .middleware import auth_middleware
-app.middleware("http")(auth_middleware)
-
-# Añade el middleware de autenticación
 app.middleware("http")(auth_middleware)
 
 # OAuth2 para manejar el token
@@ -76,6 +73,8 @@ app.include_router(login_user.router, prefix="/api/v1")
 app.include_router(logout.router, prefix="/api/v1")
 
 app.include_router(visualize.router, prefix="/api/v1")
+
+app.include_router(upload_cfdi.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup():
