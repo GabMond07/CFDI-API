@@ -35,30 +35,42 @@ CREATE TABLE Issuer (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Tabla principal de CFDI
-CREATE TABLE CFDI (
-    id BIGSERIAL PRIMARY KEY,
-    uuid VARCHAR(36) UNIQUE NOT NULL,
-    version VARCHAR(10) DEFAULT '4.0' NOT NULL,
-    serie VARCHAR(25),
-    folio VARCHAR(25),
-    issue_date TIMESTAMPTZ NOT NULL,
-    seal TEXT,
-    certificate_number VARCHAR(20),
-    certificate TEXT,
-    place_of_issue VARCHAR(100),
-    type VARCHAR(20) NOT NULL,
-    total FLOAT NOT NULL,
-    subtotal FLOAT NOT NULL,
-    payment_method VARCHAR(50),
-    payment_form VARCHAR(50),
-    currency VARCHAR(10),
-    user_id VARCHAR(13) NOT NULL,
-    issuer_id VARCHAR(13) NOT NULL,
-    cfdi_use VARCHAR(50),
-    export_status VARCHAR(20),
-    FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE,
-    FOREIGN KEY (issuer_id) REFERENCES Issuer(rfc_issuer) ON DELETE RESTRICT ON UPDATE CASCADE
+-- Tabla Receiver
+CREATE TABLE "Receiver" (
+    "id" SERIAL PRIMARY KEY,
+    "rfc_receiver" VARCHAR(20) NOT NULL,
+    "name_receiver" VARCHAR(150),
+    "cfdi_use" VARCHAR(50),
+    "tax_regime" VARCHAR(100),
+    "tax_address" VARCHAR(255)
+);
+
+-- Tabla CFDI
+CREATE TABLE "CFDI" (
+    "id" BIGSERIAL PRIMARY KEY,
+    "uuid" VARCHAR(36) UNIQUE NOT NULL,
+    "version" VARCHAR(10) DEFAULT '4.0',
+    "serie" VARCHAR(25),
+    "folio" VARCHAR(25),
+    "issue_date" TIMESTAMPTZ NOT NULL,
+    "seal" TEXT,
+    "certificate_number" VARCHAR(20),
+    "certificate" TEXT,
+    "place_of_issue" VARCHAR(100),
+    "type" VARCHAR(20) NOT NULL,
+    "total" FLOAT NOT NULL,
+    "subtotal" FLOAT NOT NULL,
+    "payment_method" VARCHAR(50),
+    "payment_form" VARCHAR(50),
+    "currency" VARCHAR(10),
+    "user_id" VARCHAR(13) NOT NULL,
+    "issuer_id" VARCHAR(13) NOT NULL,
+    "receiver_id" INTEGER,
+    "cfdi_use" VARCHAR(50),
+    "export_status" VARCHAR(20),
+    FOREIGN KEY ("user_id") REFERENCES "User"("rfc") ON DELETE CASCADE ON UPDATE CASCADE,
+    FOREIGN KEY ("issuer_id") REFERENCES "Issuer"("rfc_issuer") ON DELETE RESTRICT ON UPDATE CASCADE,
+    FOREIGN KEY ("receiver_id") REFERENCES "Receiver"("id") ON DELETE SET NULL
 );
 
 -- Tabla de archivos adjuntos del CFDI
@@ -163,21 +175,40 @@ CREATE TABLE BatchJob (
     FOREIGN KEY (user_id) REFERENCES "User"(rfc) ON DELETE CASCADE ON UPDATE CASCADE
 );
 
--- Índices para optimizar consultas
-CREATE INDEX idx_user_role_id ON "User"(role_id);
-CREATE INDEX idx_cfdi_user_id ON CFDI(user_id);
-CREATE INDEX idx_cfdi_issue_date ON CFDI(issue_date);
-CREATE INDEX idx_cfdi_attachment_cfdi_id ON CFDIAttachment(cfdi_id);
-CREATE INDEX idx_concept_cfdi_id ON Concept(cfdi_id);
-CREATE INDEX idx_taxes_concept_id ON Taxes(concept_id);
-CREATE INDEX idx_cfdi_relation_cfdi_id ON CFDIRelation(cfdi_id);
-CREATE INDEX idx_report_cfdi_id ON Report(cfdi_id);
-CREATE INDEX idx_report_user_id ON Report(user_id);
-CREATE INDEX idx_visualization_user_id ON Visualization(user_id);
-CREATE INDEX idx_visualization_cfdi_id ON Visualization(cfdi_id);
-CREATE INDEX idx_notification_user_id ON Notification(user_id);
-CREATE INDEX idx_notification_cfdi_id ON Notification(cfdi_id);
-CREATE INDEX idx_audit_log_user_id ON AuditLog(user_id);
-CREATE INDEX idx_audit_log_created_at ON AuditLog(created_at);
-CREATE INDEX idx_batch_job_user_id ON BatchJob(user_id);
-CREATE INDEX idx_batch_job_created_at ON BatchJob(created_at);
+-- Tabla PaymentComplement
+CREATE TABLE "PaymentComplement" (
+    "Payment_ID" SERIAL PRIMARY KEY,
+    "cfdi_id" BIGINT NOT NULL,
+    "payment_date" DATE NOT NULL,
+    "payment_form" VARCHAR(50),
+    "payment_currency" VARCHAR(10),
+    "payment_amount" FLOAT,
+    FOREIGN KEY ("cfdi_id") REFERENCES "CFDI"("id") ON DELETE CASCADE
+);
+
+-- Crear índices
+CREATE INDEX "idx_user_id" ON "CFDI"("user_id");
+CREATE INDEX "idx_issue_date" ON "CFDI"("issue_date");
+CREATE INDEX "idx_receiver_id" ON "CFDI"("receiver_id");
+
+CREATE INDEX "idx_cfdi_attachment_cfdi_id" ON "CFDIAttachment"("cfdi_id");
+CREATE INDEX "idx_concept_cfdi_id" ON "Concept"("cfdi_id");
+CREATE INDEX "idx_taxes_concept_id" ON "Taxes"("concept_id");
+CREATE INDEX "idx_cfdi_relation_cfdi_id" ON "CFDIRelation"("cfdi_id");
+
+CREATE INDEX "idx_report_cfdi_id" ON "Report"("cfdi_id");
+CREATE INDEX "idx_report_user_id" ON "Report"("user_id");
+
+CREATE INDEX "idx_visualization_user_id" ON "Visualization"("user_id");
+CREATE INDEX "idx_visualization_cfdi_id" ON "Visualization"("cfdi_id");
+
+CREATE INDEX "idx_notification_user_id" ON "Notification"("user_id");
+CREATE INDEX "idx_notification_cfdi_id" ON "Notification"("cfdi_id");
+
+CREATE INDEX "idx_audit_log_user_id" ON "AuditLog"("user_id");
+CREATE INDEX "idx_audit_log_created_at" ON "AuditLog"("created_at");
+
+CREATE INDEX "idx_batch_job_user_id" ON "BatchJob"("user_id");
+CREATE INDEX "idx_batch_job_created_at" ON "BatchJob"("created_at");
+
+CREATE INDEX "idx_payment_complement_cfdi_id" ON "PaymentComplement"("cfdi_id");
