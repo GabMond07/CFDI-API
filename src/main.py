@@ -18,6 +18,7 @@ from src.router import login_user
 from src.router import logout
 from src.router import visualize
 from src.router import upload_cfdi
+from src.ml.router import sospechoso_router
 import asyncio
 from src.event_bus.consumers.login_consumer import start_login_consumer
 from fastapi.middleware.cors import CORSMiddleware
@@ -74,12 +75,13 @@ app.include_router(login_user.router, prefix="/api/v1")
 
 app.include_router(logout.router, prefix="/api/v1")
 
-app.include_router(routerCFDI.router)
-
+app.include_router(routerCFDI.router, prefix="/api/v1")
 
 app.include_router(visualize.router, prefix="/api/v1")
 
 app.include_router(upload_cfdi.router, prefix="/api/v1")
+
+app.include_router(sospechoso_router.router, prefix="/api/v1")
 
 @app.on_event("startup")
 async def startup():
