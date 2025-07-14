@@ -1,5 +1,5 @@
 from src.database import db
-from src.Models.visualize import CFDIFilter, JoinRequest
+from src.Models.visualize import CFDIFilter, JoinRequest, TableType
 from typing import Dict, List, Optional
 
 class JoinService:
@@ -16,8 +16,6 @@ class JoinService:
             if filters.end_date:
                 where_conditions["issue_date"] = where_conditions.get("issue_date", {})
                 where_conditions["issue_date"]["lte"] = filters.end_date
-            if filters.status:
-                where_conditions["status"] = filters.status
             if filters.type:
                 where_conditions["type"] = filters.type
             if filters.serie:
@@ -26,6 +24,24 @@ class JoinService:
                 where_conditions["folio"] = filters.folio
             if filters.issuer_id:
                 where_conditions["issuer_id"] = filters.issuer_id
+            if filters.receiver_id:
+                where_conditions["receiver_id"] = filters.receiver_id
+            if filters.currency:
+                where_conditions["currency"] = filters.currency
+            if filters.payment_method:
+                where_conditions["payment_method"] = filters.payment_method
+            if filters.payment_form:
+                where_conditions["payment_form"] = filters.payment_form
+            if filters.cfdi_use:
+                where_conditions["cfdi_use"] = filters.cfdi_use
+            if filters.export_status:
+                where_conditions["export_status"] = filters.export_status
+            if filters.min_total is not None:
+                where_conditions["total"] = where_conditions.get("total", {})
+                where_conditions["total"]["gte"] = filters.min_total
+            if filters.max_total is not None:
+                where_conditions["total"] = where_conditions.get("total", {})
+                where_conditions["total"]["lte"] = filters.max_total
         return where_conditions
 
     async def join_data(self, request: JoinRequest) -> List[Dict]:
@@ -39,21 +55,26 @@ class JoinService:
         """
         where_conditions = self._build_where_conditions(request.filters)
         include = {}
-        if "receiver" in request.sources:
+        if TableType.RECEIVER in request.sources:
             include["receiver"] = True
-        if "issuer" in request.sources:
+        if TableType.ISSUER in request.sources:
             include["issuer"] = True
+        if TableType.CONCEPT in request.sources:
+            include["concepts"] = True
 
         cfdis = await db.cfdi.find_many(
             where=where_conditions,
             include=include
         )
-        return [
-            {
+        result = []
+        for cfdi in cfdis:
+            item = {
                 "uuid": cfdi.uuid,
                 "total": cfdi.total,
-                "issuer_name": cfdi.issuer.name_issuer if cfdi.issuer and "issuer" in request.sources else None,
-                "receiver_name": cfdi.receiver.name_receiver if cfdi.receiver and "receiver" in request.sources else None
+                "issuer_name": cfdi.issuer.name_issuer if cfdi.issuer and TableType.ISSUER in request.sources else None,
+                "receiver_name": cfdi.receiver.name_receiver if cfdi.receiver and TableType.RECEIVER in request.sources else None
             }
-            for cfdi in cfdis
-        ]
+            if TableType.CONCEPT in request.sources:
+                item["concepts"] = [{"description": concept.description, "amount": concept.amount} for concept in cfdi.concepts] if cfdi.concepts else []
+            result.append(item)
+        return result

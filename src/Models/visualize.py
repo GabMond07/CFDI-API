@@ -28,7 +28,8 @@ class CFDIFilter(BaseModel):
     export_status: Optional[str] = Field(None, max_length=20, description="Estado de exportación")
     min_total: Optional[float] = Field(None, ge=0, description="Monto mínimo")
     max_total: Optional[float] = Field(None, ge=0, description="Monto máximo")
-    
+    status: Optional[str] = Field(None, max_length=20, description="Estado del CFDI")
+
     @validator('end_date')
     def validate_date_range(cls, v, values):
         if v and values.get('start_date') and v < values['start_date']:
