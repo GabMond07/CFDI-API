@@ -4,17 +4,14 @@ from src.service.aggregation_service import AggregationService
 from src.service.join_service import JoinService
 from src.service.stats_service import StatsService
 from src.service.operation_service import SetOperationService
-from src.service.script_service import ScriptService
-from src.Models.visualize import CFDIFilter, JoinRequest, SetOperationRequest, ScriptRequest
+from src.Models.visualize import CFDIFilter, JoinRequest, SetOperationRequest, ScriptRequest, OperationType
 from datetime import datetime
 from typing import Optional
-
 import logging
 
+router = APIRouter()
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-router = APIRouter()
-
-router = APIRouter()
 
 @router.post("/aggregate")
 async def aggregate_data(
@@ -24,11 +21,18 @@ async def aggregate_data(
     include_details: bool = Query(False),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
     serie: Optional[str] = Query(None),
     folio: Optional[str] = Query(None),
-    issuer_id: Optional[str] = Query(None)
+    issuer_id: Optional[str] = Query(None),
+    receiver_id: Optional[int] = Query(None),
+    currency: Optional[str] = Query(None),
+    payment_method: Optional[str] = Query(None),
+    payment_form: Optional[str] = Query(None),
+    cfdi_use: Optional[str] = Query(None),
+    export_status: Optional[str] = Query(None),
+    min_total: Optional[float] = Query(None),
+    max_total: Optional[float] = Query(None)
 ):
     """
     Procesa agregaciones básicas (sum, count, avg, min, max) sobre CFDI.
@@ -37,11 +41,18 @@ async def aggregate_data(
     filters = CFDIFilter(
         start_date=datetime.fromisoformat(start_date) if start_date else None,
         end_date=datetime.fromisoformat(end_date) if end_date else None,
-        status=status,
         type=type,
         serie=serie,
         folio=folio,
-        issuer_id=issuer_id
+        issuer_id=issuer_id,
+        receiver_id=receiver_id,
+        currency=currency,
+        payment_method=payment_method,
+        payment_form=payment_form,
+        cfdi_use=cfdi_use,
+        export_status=export_status,
+        min_total=min_total,
+        max_total=max_total
     )
     service = AggregationService(user_rfc)
     result = await service.aggregate_data(operation, field, filters, include_details)
@@ -53,11 +64,18 @@ async def central_tendency(
     field: str = Query(..., regex="^(total|subtotal)$"),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
     serie: Optional[str] = Query(None),
     folio: Optional[str] = Query(None),
-    issuer_id: Optional[str] = Query(None)
+    issuer_id: Optional[str] = Query(None),
+    receiver_id: Optional[int] = Query(None),
+    currency: Optional[str] = Query(None),
+    payment_method: Optional[str] = Query(None),
+    payment_form: Optional[str] = Query(None),
+    cfdi_use: Optional[str] = Query(None),
+    export_status: Optional[str] = Query(None),
+    min_total: Optional[float] = Query(None),
+    max_total: Optional[float] = Query(None)
 ):
     """
     Calcula medidas de tendencia central (promedio, mediana, moda).
@@ -66,11 +84,18 @@ async def central_tendency(
     filters = CFDIFilter(
         start_date=datetime.fromisoformat(start_date) if start_date else None,
         end_date=datetime.fromisoformat(end_date) if end_date else None,
-        status=status,
         type=type,
         serie=serie,
         folio=folio,
-        issuer_id=issuer_id
+        issuer_id=issuer_id,
+        receiver_id=receiver_id,
+        currency=currency,
+        payment_method=payment_method,
+        payment_form=payment_form,
+        cfdi_use=cfdi_use,
+        export_status=export_status,
+        min_total=min_total,
+        max_total=max_total
     )
     service = StatsService(user_rfc)
     result = await service.central_tendency(field, filters)
@@ -82,11 +107,18 @@ async def basic_stats(
     field: str = Query(..., regex="^(total|subtotal)$"),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
     type: Optional[str] = Query(None),
     serie: Optional[str] = Query(None),
     folio: Optional[str] = Query(None),
-    issuer_id: Optional[str] = Query(None)
+    issuer_id: Optional[str] = Query(None),
+    receiver_id: Optional[int] = Query(None),
+    currency: Optional[str] = Query(None),
+    payment_method: Optional[str] = Query(None),
+    payment_form: Optional[str] = Query(None),
+    cfdi_use: Optional[str] = Query(None),
+    export_status: Optional[str] = Query(None),
+    min_total: Optional[float] = Query(None),
+    max_total: Optional[float] = Query(None)
 ):
     """
     Calcula estadísticas básicas (rango, varianza, desviación estándar, coeficiente de variación).
@@ -95,11 +127,18 @@ async def basic_stats(
     filters = CFDIFilter(
         start_date=datetime.fromisoformat(start_date) if start_date else None,
         end_date=datetime.fromisoformat(end_date) if end_date else None,
-        status=status,
         type=type,
         serie=serie,
         folio=folio,
-        issuer_id=issuer_id
+        issuer_id=issuer_id,
+        receiver_id=receiver_id,
+        currency=currency,
+        payment_method=payment_method,
+        payment_form=payment_form,
+        cfdi_use=cfdi_use,
+        export_status=export_status,
+        min_total=min_total,
+        max_total=max_total
     )
     service = StatsService(user_rfc)
     result = await service.basic_stats(field, filters)
@@ -114,6 +153,7 @@ async def join_data(
     Combina datos de múltiples tablas (joins virtuales).
     """
     user_rfc = request.state.user["sub"]
+    logger.info(f"Received request for /join: {join_request}")
     service = JoinService(user_rfc)
     result = await service.join_data(join_request)
     return JSONResponse(content={"items": result})
@@ -153,46 +193,3 @@ async def set_operation(
             status_code=500,
             detail=f"Internal server error: {str(e)}"
         )
-    
-@router.post("/scripts/execute")
-async def execute_script(
-    request: Request,
-    script_request: ScriptRequest = Depends()
-):
-    """
-    Placeholder para ejecutar scripts personalizados (Python, R, SQL). No implementado en la versión beta.
-    """
-    user_rfc = request.state.user["sub"]
-    return JSONResponse(content={"message": "Script execution not implemented in beta"})
-
-@router.post("/scripts/sql")
-async def execute_sql(
-    request: Request,
-    query: str = Query(...),
-    start_date: Optional[str] = Query(None),
-    end_date: Optional[str] = Query(None),
-    status: Optional[str] = Query(None),
-    type: Optional[str] = Query(None),
-    serie: Optional[str] = Query(None),
-    folio: Optional[str] = Query(None),
-    issuer_id: Optional[str] = Query(None)
-):
-    """
-    Ejecuta consultas SQL predefinidas sobre CFDI (versión beta).
-    """
-    user_rfc = request.state.user["sub"]
-    filters = CFDIFilter(
-        start_date=datetime.fromisoformat(start_date) if start_date else None,
-        end_date=datetime.fromisoformat(end_date) if end_date else None,
-        status=status,
-        type=type,
-        serie=serie,
-        folio=folio,
-        issuer_id=issuer_id
-    )
-    service = ScriptService(user_rfc)
-    try:
-        result = await service.execute_sql(query, filters)
-        return JSONResponse(content={"result": result})
-    except ValueError as e:
-        return JSONResponse(content={"error": str(e)}, status_code=400)

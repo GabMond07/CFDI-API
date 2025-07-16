@@ -2,7 +2,7 @@ from lxml import etree
 from satcfdi.cfdi import CFDI
 from prisma import Prisma
 from fastapi import HTTPException
-from datetime import datetime
+from datetime import datetime, timezone
 import logging
 
 # Configurar logging
@@ -28,7 +28,7 @@ async def process_cfdi(xml_bytes: bytes, user_id: str, db: Prisma):
         ns = {
             'cfdi': 'http://www.sat.gob.mx/cfd/4',
             'tfd': 'http://www.sat.gob.mx/TimbreFiscalDigital',
-            'pago10': 'http://www.sat.gob.mx/Pagos20',
+            'pago20': 'http://www.sat.gob.mx/Pagos20',
             'nomina12': 'http://www.sat.gob.mx/nomina12'
         }
 
@@ -196,14 +196,18 @@ async def process_cfdi(xml_bytes: bytes, user_id: str, db: Prisma):
         # Manejar Complementos (Pagos y Nómina)
         logger.debug("Procesando complementos...")
         if type_ == 'P':
-            pago = tree.find('cfdi:Complemento/pago10:Pagos', namespaces=ns)
+            pago = tree.find('cfdi:Complemento/pago20:Pagos', namespaces=ns)
             if pago is not None:
-                for p in pago.findall('pago10:Pago', namespaces=ns):
+                for p in pago.findall('pago20:Pago', namespaces=ns):
                     payment_date = p.get('FechaPago')
                     if payment_date:
                         try:
-                            payment_date_dt = datetime.fromisoformat(payment_date.replace('Z', '+00:00') if payment_date.endswith('Z') else payment_date + 'Z')
-                            payment_date = payment_date_dt.date().isoformat()  # Extraer solo la fecha para db.Date
+                            # Parsear y normalizar a UTC
+                            payment_date_dt = datetime.fromisoformat(
+                                payment_date.replace('Z', '+00:00') if payment_date.endswith('Z') else payment_date
+                            )
+                            # Forzar zona UTC e incluir milisegundos (opcional pero más seguro)
+                            payment_date = payment_date_dt.astimezone(timezone.utc).isoformat(timespec='seconds')
                             logger.debug(f"payment_date convertido: {payment_date}")
                         except ValueError as e:
                             logger.error(f"Invalid payment_date format: {str(e)}")
