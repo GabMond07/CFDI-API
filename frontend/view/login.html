@@ -1,19 +1,41 @@
-<div class="row justify-content-center">
-    <div class="col-md-4">
-        <div class="card p-4 shadow">
-            <h3 class="text-center mb-3">Iniciar Sesión</h3>
-            <form id="loginForm">
-                <div class="mb-3">
-                    <label for="rfc" class="form-label">RFC</label>
+<div class="d-flex flex-row align-items-center shadow rounded p-5 bg-white"
+    style="max-width: 1100px; max-height: 550px;" >
+
+    <!-- Columna Izquierda: Logo -->
+    <div class="pe-4 border-end text-center">
+        <img src="./img/logo.png" alt="Logo CFDI" class="logo-img">
+    </div>
+
+    <!-- Columna Derecha: Login -->
+    <div class="ps-4 flex-grow-1" style="min-width: 250px;">
+        <h3 class="text-center mb-3">Iniciar sesión</h3>
+        <form id="loginForm">
+
+            <div class="mb-3">
+                <label for="rfc" class="form-label">RFC</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
                     <input type="text" class="form-control" id="rfc" required>
                 </div>
-                <div class="mb-3">
-                    <label for="password" class="form-label">Contraseña</label>
+            </div>
+
+            <div class="mb-3">
+                <label for="password" class="form-label">Contraseña</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
                     <input type="password" class="form-control" id="password" required>
+                    <span class="input-group-text" style="cursor: pointer;" onclick="togglePassword()">
+                        <i id="togglePasswordIcon" class="bi bi-eye-fill"></i>
+                    </span>
                 </div>
-                <div id="error" class="text-danger mb-2" style="display: none;"></div>
-                <button type="submit" class="btn btn-primary w-100">Ingresar</button>
-            </form>
-        </div>
+            </div>
+
+            <div id="error" class="text-danger mb-2" style="display: none;"></div>
+            <button type="submit" class="btn btn-primary w-100 mb-2">Ingresar</button>
+
+            <div class="text-center">
+                <button type="button" class="btn btn-secondary w-100" onclick="loadRegistro()">Registrarse</button>
+            </div>
+        </form>
     </div>
 </div>

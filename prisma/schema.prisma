@@ -233,4 +233,3 @@ model PaymentComplement {
   @@map("PaymentComplement")
   @@index([cfdi_id])
 }
-

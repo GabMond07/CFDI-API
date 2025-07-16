@@ -1,0 +1,57 @@
+<div class="d-flex flex-row align-items-center shadow rounded p-5 bg-white" style="max-width: 1100px; max-height: 550px;">
+
+  <!-- Columna Izquierda: Logo -->
+  <div class="pe-4 border-end text-center">
+    <img src="./img/logo.png" alt="Logo CFDI" class="logo-img">
+  </div>
+
+  <!-- Columna Derecha: Registro -->
+  <div class="ps-4 flex-grow-1" style="min-width: 250px;">
+    <h3 class="text-center mb-3">Registro de Usuario</h3>
+    <form id="registroForm">
+
+      <div class="mb-3">
+        <label for="username" class="form-label">Nombre</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-person-fill"></i></span>
+          <input type="text" class="form-control" id="username" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="rfc" class="form-label">RFC</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-card-text"></i></span>
+          <input type="text" class="form-control" id="rfc" required>
+        </div>
+        <div id="rfcError" class="invalid-feedback"></div>
+      </div>
+
+      <div class="mb-3">
+        <label for="email" class="form-label">Correo electrónico</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-envelope-fill"></i></span>
+          <input type="email" class="form-control" id="email" required>
+        </div>
+      </div>
+
+      <div class="mb-3">
+        <label for="password" class="form-label">Contraseña</label>
+        <div class="input-group">
+          <span class="input-group-text"><i class="bi bi-lock-fill"></i></span>
+          <input type="password" class="form-control" id="password" required>
+          <span class="input-group-text" style="cursor: pointer;" onclick="toggleRegisterPassword()">
+            <i id="toggleRegisterPasswordIcon" class="bi bi-eye-fill"></i>
+          </span>
+        </div>
+        <div id="passwordError" class="invalid-feedback"></div>
+      </div>
+
+      <div id="registroError" class="text-danger mb-2" style="display: none;"></div>
+      <div id="registroExito" class="text-success mb-2" style="display: none;"></div>
+
+      <button type="submit" class="btn btn-success w-100 mb-2">Registrarse</button>
+      <button type="button" class="btn btn-secondary w-100" onclick="loadLogin()">Regresar</button>
+    </form>
+  </div>
+</div>
