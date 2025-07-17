@@ -1,21 +1,30 @@
 from fastapi import Request, HTTPException
 import jwt
-from .auth import SECRET_KEY, ALGORITHM
-from prisma import Prisma
+from src.auth import SECRET_KEY, ALGORITHM
 from datetime import datetime, timezone
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def auth_middleware(request: Request, call_next):
     """
     Middleware para validar tokens JWT en las solicitudes.
-    Excluye los endpoints de login y registro.
-    Verifica si el token está revocado o ha expirado.
+    Excluye los endpoints de login, registro y logout.
+    Evita consultas a la base de datos para validaciones básicas.
     """
+    start_time = datetime.now(timezone.utc)
+    
     if request.method == "OPTIONS":
-        return await call_next(request)
+        response = await call_next(request)
+        logger.info(f"Middleware (OPTIONS) tomó {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
+        return response
 
-    # Excluir rutas de documentación y autenticación pública
-    if request.url.path in ["/docs", "/openapi.json", "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/logout"]:
-        return await call_next(request)
+    # Excluir rutas públicas
+    public_paths = ["/docs", "/openapi.json", "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/logout"]
+    if any(request.url.path.startswith(path) for path in public_paths):
+        response = await call_next(request)
+        logger.info(f"Middleware (ruta pública) tomó {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
+        return response
     
     token = request.headers.get("Authorization")
     if not token:
@@ -23,25 +32,14 @@ async def auth_middleware(request: Request, call_next):
     
     try:
         token = token.replace("Bearer ", "")
-        # Verificar si el token existe, está revocado o ha expirado
-        prisma = Prisma()
-        await prisma.connect()
-        try:
-            auth_token = await prisma.authtoken.find_unique(where={"token": token})
-            if not auth_token:
-                raise HTTPException(status_code=401, detail="Invalid token")
-            if auth_token.revoked_at:
-                raise HTTPException(status_code=401, detail="Token has been revoked")
-            if auth_token.expires_at < datetime.now(timezone.utc):
-                raise HTTPException(status_code=401, detail="Token has expired")
-        finally:
-            await prisma.disconnect()
-
-        # Decodificar el token
+        # Decodificar el token (incluye verificación de expiración)
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         request.state.user = payload
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Token expired")
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
-    return await call_next(request)
+    
+    response = await call_next(request)
+    logger.info(f"Middleware (autenticado) tomó {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
+    return response

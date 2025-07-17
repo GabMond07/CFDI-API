@@ -185,6 +185,7 @@ model Notification {
 }
 
 model AuditLog {
+
     id           BigInt   @id @default(autoincrement())
     user_id      String?  @db.VarChar(13)
     action       String   @db.VarChar(100)
