@@ -1,6 +1,7 @@
 from src.database import db
 from src.Models.visualize import CFDIFilter
 from typing import Dict, Optional, List
+import math
 
 class CFDIProcessor:
     def __init__(self, user_rfc: str):
@@ -44,28 +45,42 @@ class CFDIProcessor:
                 where_conditions["total"]["lte"] = filters.max_total
         return where_conditions
 
-    async def process_data(self, filters: CFDIFilter, aggregation: str, include_details: bool) -> Dict:
+    async def process_data(self, filters: CFDIFilter, aggregation: str, include_details: bool, page: int = 1, page_size: int = 100) -> Dict:
         """Procesa datos CFDI con agregaciones.
 
         Args:
             filters (CFDIFilter): Filtros a aplicar a la consulta.
             aggregation (str): Tipo de agregación (sum, count, avg, min, max).
             include_details (bool): Indica si se deben incluir detalles en la respuesta.
+            page (int): Número de página (comienza en 1).
+            page_size (int): Cantidad de registros por página.
 
         Returns:
-            Dict: Resultado de la agregación y detalles opcionales.
+            Dict: Resultado de la agregación, detalles opcionales, número de páginas y tamaño de página.
         """
         where_conditions = self._build_where_conditions(filters)
+        
+        # Contar el total de registros para calcular el número de páginas
+        total_count = await db.cfdi.count(where=where_conditions)
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+
+        # Obtener los registros paginados
         cfdis = await db.cfdi.find_many(
             where=where_conditions,
-            include={"concepts": include_details, "issuer": True}
+            include={"concepts": include_details, "issuer": True},
+            take=page_size,
+            skip=(page - 1) * page_size
         )
 
         # Convertir resultados a lista
         data = [c for c in cfdis]
 
         # Aplicar agregaciones
-        result = {}
+        result = {
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
+        }
         if aggregation == "sum":
             result["total_amount"] = sum(cfdi.total for cfdi in data) if data else 0
         elif aggregation == "count":
