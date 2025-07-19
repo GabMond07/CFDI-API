@@ -1,6 +1,7 @@
 from src.database import db
 from src.Models.visualize import CFDIFilter, JoinRequest, TableType
 from typing import Dict, List, Optional
+import math
 
 class JoinService:
     def __init__(self, user_rfc: str):
@@ -44,28 +45,54 @@ class JoinService:
                 where_conditions["total"]["lte"] = filters.max_total
         return where_conditions
 
-    async def join_data(self, request: JoinRequest) -> List[Dict]:
+    def _validate_join_conditions(self, on: Dict[str, str], sources: List[TableType]) -> None:
+        """Valida las condiciones de join especificadas en el campo 'on'."""
+        valid_joins = {
+            "cfdi.issuer_id": "issuer.rfc",
+            "cfdi.receiver_id": "receiver.rfc"
+        }
+        for left, right in on.items():
+            if left not in valid_joins or valid_joins[left] != right:
+                raise ValueError(f"Invalid join condition: {left} = {right}")
+            # Ensure the joined table is included in sources
+            if left.startswith("cfdi.issuer_id") and TableType.ISSUER not in sources:
+                raise ValueError("ISSUER must be in sources for cfdi.issuer_id join")
+            if left.startswith("cfdi.receiver_id") and TableType.RECEIVER not in sources:
+                raise ValueError("RECEIVER must be in sources for cfdi.receiver_id join")
+
+    async def join_data(self, request: JoinRequest, page: int = 1, page_size: int = 100) -> Dict:
         """Combina datos de múltiples tablas (joins virtuales).
 
         Args:
-            request (JoinRequest): The join request specifying sources, join type, and filters.
+            request (JoinRequest): The join request specifying sources, join type, on conditions, and filters.
+            page (int): Page number (starts at 1).
+            page_size (int): Number of records per page.
 
         Returns:
-            List[Dict]: A list of combined data from the specified tables.
+            Dict: A dictionary containing the combined data, page number, page size, and total pages.
         """
+        # Validate join conditions
+        self._validate_join_conditions(request.on, request.sources)
+
         where_conditions = self._build_where_conditions(request.filters)
         include = {}
         if TableType.RECEIVER in request.sources:
             include["receiver"] = True
         if TableType.ISSUER in request.sources:
             include["issuer"] = True
-        if TableType.CONCEPT in request.sources:
-            include["concepts"] = True
 
+        # Count total records to calculate total pages
+        total_count = await db.cfdi.count(where=where_conditions)
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+
+        # Fetch paginated records
         cfdis = await db.cfdi.find_many(
             where=where_conditions,
-            include=include
+            include=include,
+            take=page_size,
+            skip=(page - 1) * page_size
         )
+        
         result = []
         for cfdi in cfdis:
             item = {
@@ -74,7 +101,11 @@ class JoinService:
                 "issuer_name": cfdi.issuer.name_issuer if cfdi.issuer and TableType.ISSUER in request.sources else None,
                 "receiver_name": cfdi.receiver.name_receiver if cfdi.receiver and TableType.RECEIVER in request.sources else None
             }
-            if TableType.CONCEPT in request.sources:
-                item["concepts"] = [{"description": concept.description, "amount": concept.amount} for concept in cfdi.concepts] if cfdi.concepts else []
             result.append(item)
-        return result
+        
+        return {
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "items": result
+        }

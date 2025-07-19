@@ -32,7 +32,9 @@ async def aggregate_data(
     cfdi_use: Optional[str] = Query(None),
     export_status: Optional[str] = Query(None),
     min_total: Optional[float] = Query(None),
-    max_total: Optional[float] = Query(None)
+    max_total: Optional[float] = Query(None),
+    page: int = Query(1, ge=1),  # Page number, starting at 1
+    page_size: int = Query(100, ge=1, le=1000)  # Records per page
 ):
     """
     Procesa agregaciones básicas (sum, count, avg, min, max) sobre CFDI.
@@ -55,7 +57,7 @@ async def aggregate_data(
         max_total=max_total
     )
     service = AggregationService(user_rfc)
-    result = await service.aggregate_data(operation, field, filters, include_details)
+    result = await service.aggregate_data(operation, field, filters, include_details, page, page_size)
     return JSONResponse(content=result)
 
 @router.post("/stats/central-tendency")
@@ -147,15 +149,17 @@ async def basic_stats(
 @router.post("/join")
 async def join_data(
     request: Request,
-    join_request: JoinRequest = Depends()
+    join_request: JoinRequest = Depends(),
+    page: int = Query(1, ge=1),  # Page number, starting at 1
+    page_size: int = Query(100, ge=1, le=1000)  # Records per page
 ):
     """
     Combina datos de múltiples tablas (joins virtuales).
     """
     user_rfc = request.state.user["sub"]
-    logger.info(f"Received request for /join: {join_request}")
+    logger.info(f"Received request for /join: {join_request}, page: {page}, page_size: {page_size}")
     service = JoinService(user_rfc)
-    result = await service.join_data(join_request)
+    result = await service.join_data(join_request, page, page_size)
     return JSONResponse(content={"items": result})
 
 @router.post("/sets/operation")
