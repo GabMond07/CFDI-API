@@ -1,8 +1,9 @@
 from src.database import db
+from src.Models.visualize import CFDIFilter, SetOperationRequest, OperationType, TableType
 from typing import Dict, List, Optional
 from datetime import datetime
 import logging
-from src.Models.visualize import CFDIFilter, SetOperationRequest, OperationType, TableType
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -55,24 +56,44 @@ class SetOperationService:
         
         return where_conditions
     
-    async def _fetch_cfdi_data(self, filters: Optional[CFDIFilter]) -> List[Dict]:
+    async def _serialize_filters(self, filters: Optional[CFDIFilter]) -> Dict:
+        """Serializa los campos datetime de CFDIFilter a strings."""
+        if not filters:
+            return {}
+        filter_dict = filters.dict(exclude_none=True)
+        if "start_date" in filter_dict and filter_dict["start_date"]:
+            filter_dict["start_date"] = filter_dict["start_date"].isoformat()
+        if "end_date" in filter_dict and filter_dict["end_date"]:
+            filter_dict["end_date"] = filter_dict["end_date"].isoformat()
+        return filter_dict
+    
+    async def _fetch_cfdi_data(self, filters: Optional[CFDIFilter], page: int, page_size: int) -> Dict:
         """Obtiene datos de CFDI basados en filtros con relaciones incluidas."""
         where_conditions = self._build_where_conditions(filters)
         
         try:
+            # Count total records for pagination
+            total_count = await db.cfdi.count(where=where_conditions)
+            total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
                 include={
                     "issuer": True,
-                    "receiver": True,
-                    "concepts": True
-                }
+                    "receiver": True
+                },
+                take=page_size,
+                skip=(page - 1) * page_size
             )
             
-            # Ordenar los resultados en Python si es necesario
-            sorted_cfdis = sorted(cfdis, key=lambda x: x.issue_date, reverse=True)
+            # Ordenar los resultados en Python, manejando None en issue_date
+            sorted_cfdis = sorted(
+                cfdis,
+                key=lambda x: x.issue_date or datetime(1970, 1, 1),
+                reverse=True
+            )
             
-            return [
+            result = [
                 {
                     "id": cfdi.id,
                     "uuid": cfdi.uuid,
@@ -91,24 +112,48 @@ class SetOperationService:
                     "place_of_issue": cfdi.place_of_issue,
                     "issuer": {
                         "rfc": cfdi.issuer.rfc_issuer,
-                        "name": cfdi.issuer.name_issuer
+                        "name": cfdi.issuer.name_issuer,
+                        "created_at": cfdi.issuer.created_at.isoformat() if cfdi.issuer and getattr(cfdi.issuer, 'created_at', None) else None,
+                        "updated_at": cfdi.issuer.updated_at.isoformat() if cfdi.issuer and getattr(cfdi.issuer, 'updated_at', None) else None
                     } if cfdi.issuer else None,
                     "receiver": {
                         "id": cfdi.receiver.id,
-                        "name": getattr(cfdi.receiver, 'name', None)
-                    } if cfdi.receiver else None,
-                    "concepts_count": len(cfdi.concepts) if cfdi.concepts else 0
+                        "name": getattr(cfdi.receiver, 'name', None),
+                        "created_at": cfdi.receiver.created_at.isoformat() if cfdi.receiver and getattr(cfdi.receiver, 'created_at', None) else None,
+                        "updated_at": cfdi.receiver.updated_at.isoformat() if cfdi.receiver and getattr(cfdi.receiver, 'updated_at', None) else None
+                    } if cfdi.receiver else None
                 }
                 for cfdi in sorted_cfdis
             ]
+            
+            logger.debug(f"Fetched CFDI data: {result}")
+            
+            return {
+                "items": result,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages
+            }
         except Exception as e:
             logger.error(f"Error fetching CFDI data: {str(e)}")
             raise
     
-    async def set_operation(self, request: SetOperationRequest) -> Dict:
+    async def set_operation(self, request: SetOperationRequest, page: int = 1, page_size: int = 100) -> Dict:
         """Realiza operaciones de conjuntos con metadatos completos."""
         if not request.sources:
-            return {"items": [], "metadata": {"total_count": 0, "operation": request.operation}}
+            return {
+                "items": [],
+                "metadata": {
+                    "total_count": 0,
+                    "operation": request.operation,
+                    "sources_processed": 0,
+                    "source_details": [],
+                    "execution_timestamp": datetime.now().isoformat(),
+                    "page": page,
+                    "page_size": page_size,
+                    "total_pages": 1
+                }
+            }
         
         # Obtener datos de todas las fuentes
         source_results = []
@@ -117,16 +162,16 @@ class SetOperationService:
         for i, source in enumerate(request.sources):
             try:
                 if source.table == TableType.CFDI:
-                    data = await self._fetch_cfdi_data(source.filters)
-                    source_results.append(data)
+                    data = await self._fetch_cfdi_data(source.filters, page, page_size)
+                    source_results.append(data["items"])
                     source_metadata.append({
                         "source_index": i,
                         "table": source.table,
-                        "record_count": len(data),
-                        "filters_applied": source.filters.dict(exclude_none=True) if source.filters else {}
+                        "record_count": len(data["items"]),
+                        "total_pages": data["total_pages"],
+                        "filters_applied": await self._serialize_filters(source.filters)
                     })
                 else:
-                    # Para futuras implementaciones de otras tablas
                     logger.warning(f"Table type {source.table} not yet supported")
                     source_results.append([])
                     source_metadata.append({
@@ -153,16 +198,30 @@ class SetOperationService:
         else:
             result_items = []
         
-        return {
-            "items": result_items,
+        # Aplicar paginación en el resultado final
+        total_count = len(result_items)
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        paginated_items = result_items[start_idx:end_idx]
+        
+        response = {
+            "items": paginated_items,
             "metadata": {
-                "total_count": len(result_items),
+                "total_count": total_count,
                 "operation": request.operation,
                 "sources_processed": len(request.sources),
                 "source_details": source_metadata,
-                "execution_timestamp": datetime.now().isoformat()
+                "execution_timestamp": datetime.now().isoformat(),
+                "page": page,
+                "page_size": page_size,
+                "total_pages": total_pages
             }
         }
+        
+        logger.debug(f"Set operation response: {response}")
+        
+        return response
     
     def _perform_union(self, results: List[List[Dict]]) -> List[Dict]:
         """Realiza unión eliminando duplicados por UUID."""

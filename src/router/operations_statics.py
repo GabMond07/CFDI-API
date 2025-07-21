@@ -162,38 +162,22 @@ async def join_data(
     result = await service.join_data(join_request, page, page_size)
     return JSONResponse(content={"items": result})
 
-@router.post("/sets/operation")
+@router.post("/set_operation")
 async def set_operation(
     request: Request,
-    set_request: SetOperationRequest
+    set_request: SetOperationRequest,
+    page: int = Query(1, ge=1),  # Page number, starting at 1
+    page_size: int = Query(100, ge=1, le=1000)  # Records per page
 ):
     """
-    RF08: Realiza operaciones de conjuntos sobre múltiples fuentes de datos CFDI.
-    
-    Permite combinar datos de múltiples consultas usando operaciones de unión e intersección.
+    Realiza operaciones de conjuntos (union, intersection) sobre datos CFDI.
     """
     try:
         user_rfc = request.state.user["sub"]
-        logger.info(f"Set operation '{set_request.operation}' requested by user {user_rfc}")
-        
-        # Validar que haya suficientes fuentes para operaciones de conjunto
-        if len(set_request.sources) < 2 and set_request.operation == OperationType.INTERSECTION:
-            raise HTTPException(
-                status_code=400,
-                detail="Intersection operation requires at least 2 data sources"
-            )
-        
-        # Ejecutar operación
+        logger.info(f"Received request for /api/v1/cfdi/set_operation: {set_request}, page: {page}, page_size: {page_size}")
         service = SetOperationService(user_rfc)
-        result = await service.set_operation(set_request)
-        
-        return JSONResponse(content=result)
-        
-    except HTTPException:
-        raise
+        result = await service.set_operation(set_request, page, page_size)
+        return JSONResponse(content={"result": result})
     except Exception as e:
-        logger.error(f"Error in set_operation endpoint: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"Internal server error: {str(e)}"
-        )
+        logger.error(f"Error in set_operation: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
