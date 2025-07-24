@@ -23,19 +23,16 @@ async def filtrar_cfdi(filtros: FiltroConsulta, user_rfc: str):
         "user_id": user_rfc
     }
 
-    # Filtro por fechas
     if filtros.fecha_inicio:
         where_clause.setdefault("issue_date", {})["gte"] = filtros.fecha_inicio
     if filtros.fecha_fin:
         where_clause.setdefault("issue_date", {})["lte"] = filtros.fecha_fin
 
-    # Filtros por monto
     if filtros.monto_min is not None:
         where_clause.setdefault("total", {})["gte"] = filtros.monto_min
     if filtros.monto_max is not None:
         where_clause.setdefault("total", {})["lte"] = filtros.monto_max
 
-    # Filtros por strings directos
     if filtros.uuid:
         where_clause["uuid"] = {"contains": filtros.uuid}
     if filtros.serie:
@@ -59,7 +56,6 @@ async def filtrar_cfdi(filtros: FiltroConsulta, user_rfc: str):
     if filtros.receiver_id is not None:
         where_clause["receiver_id"] = filtros.receiver_id
 
-    # Paginación
     skip = (filtros.pagina - 1) * filtros.por_pagina
     take = filtros.por_pagina
 
@@ -73,7 +69,6 @@ async def filtrar_cfdi(filtros: FiltroConsulta, user_rfc: str):
         include={"issuer": True, "receiver": True}
     )
 
-    # Validar si no se encontró nada con la categoría especificada
     if total == 0 and filtros.categoria:
         await db.disconnect()
         return {

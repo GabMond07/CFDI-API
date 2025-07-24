@@ -16,7 +16,7 @@ async def obtener_cfdis():
             "total": c.total,
             "payment_method": c.payment_method or "N/A",
             "issue_date": c.issue_date,
-            "day_of_week": c.issue_date.weekday(),  # 0 = lunes, 6 = domingo
+            "day_of_week": c.issue_date.weekday(),
         }
         for c in cfdis
     ])

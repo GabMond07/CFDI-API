@@ -8,7 +8,6 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
     try:
         await db.connect()
 
-        # Obtener CFDIs emitidos por el usuario
         cfdis = await db.cfdi.find_many(where={"user_id": user_rfc})
         cfdi_ids = [c.id for c in cfdis]
 
@@ -21,7 +20,6 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
                 "datos": []
             }
 
-        # Obtener Concept_IDs de esos CFDIs
         conceptos = await db.concept.find_many(where={"cfdi_id": {"in": cfdi_ids}})
         concept_ids = [c.id for c in conceptos]
 
@@ -34,7 +32,6 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
                 "datos": []
             }
 
-        # Validar concept_id si fue proporcionado
         if filtros.concept_id and filtros.concept_id not in concept_ids:
             return {
                 "pagina": filtros.pagina,
@@ -44,7 +41,6 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
                 "datos": []
             }
 
-        # Construir filtros
         where = {"concept_id": {"in": concept_ids}}
 
         if filtros.type:
@@ -60,7 +56,6 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
         if filtros.concept_id:
             where["concept_id"] = filtros.concept_id
 
-        # Validar campo de ordenamiento
         campos_validos = ["id", "tax_type", "rate", "amount", "concept_id"]
         if filtros.ordenar_por not in campos_validos:
             raise HTTPException(

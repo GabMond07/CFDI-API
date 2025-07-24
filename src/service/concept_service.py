@@ -61,7 +61,6 @@ async def consultar_conceptos(filtros: FiltroConcept, user_rfc: str):
         if filtros.ordenar_por not in campos_validos:
             raise HTTPException(status_code=400, detail=f"Campo inválido para ordenar: {filtros.ordenar_por}")
 
-         # Filtro por presencia de impuestos
         if filtros.solo_con_impuestos is True:
             where["taxes"] = {"some": {}}
         elif filtros.solo_con_impuestos is False:

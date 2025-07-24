@@ -1,4 +1,3 @@
-# src/event_bus/consumers/login_consumer.py
 import json
 from aio_pika import connect_robust
 from src.event_bus.handlers.login_handler import handle_login_event

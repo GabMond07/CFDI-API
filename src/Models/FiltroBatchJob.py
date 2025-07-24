@@ -16,7 +16,6 @@ class FiltroBatchJob(BaseModel):
 
     @model_validator(mode="after")
     def validar_filtros(self):
-        # Validar fechas
         if self.fecha_inicio and self.fecha_fin:
             if self.fecha_inicio > self.fecha_fin:
                 raise HTTPException(
@@ -24,7 +23,6 @@ class FiltroBatchJob(BaseModel):
                     detail="La fecha de inicio no puede ser mayor que la fecha final"
                 )
 
-        # Validar resultados
         if self.min_resultados is not None and self.max_resultados is not None:
             if self.min_resultados > self.max_resultados:
                 raise HTTPException(
@@ -32,7 +30,6 @@ class FiltroBatchJob(BaseModel):
                     detail="El número mínimo de resultados no puede ser mayor que el máximo"
                 )
 
-        # Validar campo para ordenar
         campos_validos = {"created_at", "status", "resultados"}
         if self.ordenar_por not in campos_validos:
             raise HTTPException(
@@ -40,7 +37,6 @@ class FiltroBatchJob(BaseModel):
                 detail=f"Campo inválido para ordenar: '{self.ordenar_por}'. Opciones válidas: {', '.join(campos_validos)}"
             )
 
-        # (Opcional) Validar valores permitidos para status
         estados_validos = {"pendiente", "en_proceso", "completado", "fallido"}
         if self.status and self.status not in estados_validos:
             raise HTTPException(

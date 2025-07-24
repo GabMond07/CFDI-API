@@ -30,21 +30,17 @@ class FiltroConsulta(BaseModel):
         fi, ff = self.fecha_inicio, self.fecha_fin
         min_m, max_m = self.monto_min, self.monto_max
 
-        # Validar fechas (fi debe ser <= ff)
         if fi and ff and fi > ff:
             raise ValueError("La fecha de inicio no puede ser mayor que la fecha final")
 
-        # Validar montos
         if min_m is not None and max_m is not None and min_m > max_m:
             raise HTTPException(status_code=400, detail="El monto mínimo no puede ser mayor que el máximo")
 
-        # Validar ordenar_por
         campos_validos = ["issue_date", "total", "subtotal", "serie",
             "folio", "uuid", "payment_method", "payment_form", "cfdi_use"]
         if self.ordenar_por not in campos_validos:
-            self.ordenar_por = "Issue_Date"  # valor por defecto
+            self.ordenar_por = "issue_date"
 
-        # Validar ordenar_dir
         direcciones_validas = ["asc", "desc"]
         if self.ordenar_dir.lower() not in direcciones_validas:
             self.ordenar_dir = "asc"

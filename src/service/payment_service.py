@@ -6,7 +6,6 @@ async def consultar_pagos(filtros: FiltroPayment, user_rfc: str):
     db = Prisma()
     await db.connect()
 
-    # Obtener CFDIs del usuario autenticado
     cfdis = await db.cfdi.find_many(
         where={"user_id": user_rfc}
     )
@@ -22,7 +21,6 @@ async def consultar_pagos(filtros: FiltroPayment, user_rfc: str):
             "datos": []
         }
 
-    # Armar filtros
     where = {
         "cfdi_id": {"in": cfdi_ids}
     }

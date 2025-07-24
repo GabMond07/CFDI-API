@@ -14,12 +14,10 @@ class FiltroAuditLog(BaseModel):
 
     @model_validator(mode="after")
     def validar_filtros(self):
-        # Validar fechas
         if self.fecha_inicio and self.fecha_fin:
             if self.fecha_inicio > self.fecha_fin:
                 raise ValueError("La fecha de inicio no puede ser mayor que la fecha final")
 
-        # Validar campo para ordenar
         campos_validos = {"created_at", "action"}
         if self.ordenar_por not in campos_validos:
             raise ValueError(

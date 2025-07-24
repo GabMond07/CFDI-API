@@ -8,7 +8,6 @@ async def consultar_receiver(filtros: FiltroReceiver, user_rfc: str):
     try:
         await db.connect()
 
-        # Obtener CFDIs del usuario
         cfdis_del_usuario = await db.cfdi.find_many(
             where={"user_id": user_rfc}
         )

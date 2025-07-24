@@ -30,7 +30,6 @@ from src.database import db
 
 app = FastAPI(title="Web API Fiscal", description="API para la gestión de CFDI y autenticación de contribuyentes.", version="1.0.0")
 
-# Primero, configura CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost"],

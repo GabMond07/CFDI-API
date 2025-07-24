@@ -5,7 +5,6 @@ import joblib
 
 df = pd.read_csv("cfdis_etiquetados.csv")
 
-# Preprocesamiento
 df = pd.get_dummies(df, columns=["payment_method"], drop_first=True)
 
 X = df[["total", "day_of_week"] + [col for col in df.columns if col.startswith("payment_method_")]]
@@ -18,7 +17,7 @@ modelo.fit(X_train, y_train)
 
 print("Precisión:", modelo.score(X_test, y_test))
 
-# Guardar el modelo junto con las columnas
+
 joblib.dump({
     "modelo": modelo,
     "columnas": X.columns.tolist()
