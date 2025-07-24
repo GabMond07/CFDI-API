@@ -1,47 +1,64 @@
 from fastapi import Request, HTTPException
 import jwt
-from .auth import SECRET_KEY, ALGORITHM
-from prisma import Prisma
+from src.auth import SECRET_KEY, ALGORITHM
 from datetime import datetime, timezone
+from src.database import db
+import logging
+
+logger = logging.getLogger(__name__)
 
 async def auth_middleware(request: Request, call_next):
     """
-    Middleware para validar tokens JWT en las solicitudes.
-    Excluye los endpoints de login y registro.
-    Verifica si el token está revocado o ha expirado.
+    Middleware para validar tokens JWT o claves de API en las solicitudes.
+    Excluye los endpoints de login, registro, logout y rutas públicas.
+    Evita consultas a la base de datos para validaciones básicas.
     """
+    start_time = datetime.now(timezone.utc)
+    
     if request.method == "OPTIONS":
-        return await call_next(request)
+        response = await call_next(request)
+        logger.info(f"Middleware (OPTIONS) tomó {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
+        return response
 
-    # Excluir rutas de documentación y autenticación pública
-    if request.url.path in ["/docs", "/openapi.json", "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/logout"]:
-        return await call_next(request)
+    # Excluir rutas públicas
+    public_paths = ["/docs", "/openapi.json", "/api/v1/auth/login", "/api/v1/auth/register", "/api/v1/auth/logout"]
+    if any(request.url.path.startswith(path) for path in public_paths):
+        response = await call_next(request)
+        logger.info(f"Middleware (ruta pública) tomó {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
+        return response
     
+    # Obtener token JWT o clave de API
     token = request.headers.get("Authorization")
-    if not token:
-        raise HTTPException(status_code=401, detail="Token missing")
-    
-    try:
-        token = token.replace("Bearer ", "")
-        # Verificar si el token existe, está revocado o ha expirado
-        prisma = Prisma()
-        await prisma.connect()
-        try:
-            auth_token = await prisma.authtoken.find_unique(where={"token": token})
-            if not auth_token:
-                raise HTTPException(status_code=401, detail="Invalid token")
-            if auth_token.revoked_at:
-                raise HTTPException(status_code=401, detail="Token has been revoked")
-            if auth_token.expires_at < datetime.now(timezone.utc):
-                raise HTTPException(status_code=401, detail="Token has expired")
-        finally:
-            await prisma.disconnect()
+    api_key = request.headers.get("X-API-Key")
 
-        # Decodificar el token
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        request.state.user = payload
-    except jwt.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Token expired")
-    except jwt.InvalidTokenError:
-        raise HTTPException(status_code=401, detail="Invalid token")
-    return await call_next(request)
+    if not token and not api_key:
+        raise HTTPException(status_code=401, detail="Token or API Key missing")
+
+    if token:
+        try:
+            token = token.replace("Bearer ", "")
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            # Estandarizar request.state.user para incluir 'sub'
+            request.state.user = {"sub": payload.get("sub"), "role_id": payload.get("role_id")}
+        except jwt.ExpiredSignatureError:
+            raise HTTPException(status_code=401, detail="Token expired")
+        except jwt.InvalidTokenError:
+            raise HTTPException(status_code=401, detail="Invalid token")
+    elif api_key:
+        # Validar clave de API
+        api_key_record = await db.apikey.find_unique(where={"key": api_key})
+        if not api_key_record or not api_key_record.active:
+            raise HTTPException(status_code=401, detail="Invalid or inactive API Key")
+        if api_key_record.expires_at and api_key_record.expires_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="API Key expired")
+        if api_key_record.revoked_at and api_key_record.revoked_at < datetime.now(timezone.utc):
+            raise HTTPException(status_code=401, detail="API Key revoked")
+        user = await db.user.find_unique(where={"rfc": api_key_record.user_id})
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        # Estandarizar request.state.user para incluir 'sub'
+        request.state.user = {"sub": user.rfc, "role_id": user.role_id}
+
+    response = await call_next(request)
+    logger.info(f"Middleware (autenticado) tomó {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
+    return response
