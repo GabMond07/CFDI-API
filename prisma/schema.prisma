@@ -1,197 +1,209 @@
+generator client {
+    provider             = "prisma-client-py"
+    recursive_type_depth = "5"
+    interface            = "asyncio"
+}
+
 datasource db {
     provider = "postgresql"
     url      = env("DATABASE_URL")
 }
 
-generator client {
-    provider = "prisma-client-py"
-    interface = "asyncio"
-    recursive_type_depth = 5
-}
-
 model Roles {
-    id          Int      @id @default(autoincrement())
-    role        String   @db.VarChar(50) @unique
-    permissions Json?    
+    id          Int    @id @default(autoincrement())
+    role        String @unique @db.VarChar(50)
+    permissions Json?
     users       User[]
 }
 
+model Tenant {
+    id             String         @id @db.VarChar(50)
+    name           String         @db.VarChar(100)
+    created_at     DateTime       @default(now()) @db.Timestamptz
+    users          User[]
+    auth_tokens    AuthToken[]
+    api_keys       ApiKey[]
+    refresh_tokens RefreshToken[]
+}
+
 model User {
-    rfc          String   @id @db.VarChar(13)
-    username     String?  @db.VarChar(100)
-    email        String?  @db.VarChar(150)
-    hashed_password String @db.VarChar(255)
-    role_id      Int
-    created_at   DateTime @default(now()) @db.Timestamptz
-    role         Roles    @relation(fields: [role_id], references: [id])
-    cfdis        CFDI[]
-    tokens       AuthToken[]
-    notifications Notification[]
-    audit_logs   AuditLog[]
-    reports      Report[]
-    visualizations Visualization[]
-    batch_jobs   BatchJob[]
+    rfc             String          @id @db.VarChar(13)
+    hashed_password String          @db.VarChar(255)
+    role_id         Int
+    tenant_id       String?         @db.VarChar(50)
+    created_at      DateTime        @default(now()) @db.Timestamptz(6)
+    email           String?         @db.VarChar(150)
+    username        String?         @db.VarChar(100)
+    tenant          Tenant?         @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    audit_logs      AuditLog[]
+    tokens          AuthToken[]
+    batch_jobs      BatchJob[]
+    cfdis           CFDI[]
+    notifications   Notification[]
+    reports         Report[]
+    role            Roles           @relation(fields: [role_id], references: [id])
+    visualizations  Visualization[]
+    api_keys        ApiKey[]
+    refresh_tokens  RefreshToken[]
 }
 
 model AuthToken {
-    id           BigInt   @id @default(autoincrement())
-    token        String   @unique @db.VarChar(255)
-    expires_at   DateTime @db.Timestamptz
-    created_at   DateTime @default(now()) @db.Timestamptz
-    revoked_at   DateTime?
-    user_id      String   @db.VarChar(13)
-    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    id         BigInt    @id @default(autoincrement())
+    token      String    @unique @db.VarChar(255)
+    expires_at DateTime  @db.Timestamptz(6)
+    created_at DateTime  @default(now()) @db.Timestamptz(6)
+    revoked_at DateTime?
+    user_id    String    @db.VarChar(13)
+    tenant_id  String?   @db.VarChar(50)
+    user       User      @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
+    tenant     Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
 
 model Issuer {
-    rfc_issuer   String   @id @db.VarChar(13)
-    name_issuer  String?  @db.VarChar(150)
-    tax_regime   String?  @db.VarChar(100)
-    cfdis        CFDI[]
-    created_at   DateTime @default(now()) @db.Timestamptz
+    rfc_issuer  String   @id @db.VarChar(13)
+    name_issuer String?  @db.VarChar(150)
+    tax_regime  String?  @db.VarChar(100)
+    created_at  DateTime @default(now()) @db.Timestamptz(6)
+    cfdis       CFDI[]
 }
 
 model CFDI {
-  id                BigInt   @id @default(autoincrement())
-  uuid              String   @unique @db.VarChar(36)
-  version           String   @default("4.0") @db.VarChar(10)
-  serie             String?  @db.VarChar(25)
-  folio             String?  @db.VarChar(25)
-  issue_date        DateTime @db.Timestamptz
-  seal              String?  @db.Text
-  certificate_number String? @db.VarChar(20)
-  certificate       String?  @db.Text
-  place_of_issue    String?  @db.VarChar(100)
-  type              String   @db.VarChar(20)
-  total             Float
-  subtotal          Float
-  payment_method    String?  @db.VarChar(50)
-  payment_form      String?  @db.VarChar(50)
-  currency          String?  @db.VarChar(10)
-  user_id           String   @db.VarChar(13)
-  issuer_id         String   @db.VarChar(13)
-  receiver_id       Int?
-  cfdi_use          String?  @db.VarChar(50)
-  export_status     String?  @db.VarChar(20)
+    id                  BigInt              @id @default(autoincrement())
+    uuid                String              @unique @db.VarChar(36)
+    version             String              @default("4.0") @db.VarChar(10)
+    serie               String?             @db.VarChar(25)
+    folio               String?             @db.VarChar(25)
+    issue_date          DateTime            @db.Timestamptz(6)
+    seal                String?
+    certificate_number  String?             @db.VarChar(20)
+    certificate         String?
+    place_of_issue      String?             @db.VarChar(100)
+    type                String              @db.VarChar(20)
+    total               Float
+    subtotal            Float
+    payment_method      String?             @db.VarChar(50)
+    payment_form        String?             @db.VarChar(50)
+    currency            String?             @db.VarChar(10)
+    user_id             String              @db.VarChar(13)
+    issuer_id           String              @db.VarChar(13)
+    receiver_id         Int?
+    cfdi_use            String?             @db.VarChar(50)
+    export_status       String?             @db.VarChar(20)
+    issuer              Issuer              @relation(fields: [issuer_id], references: [rfc_issuer])
+    receiver            Receiver?           @relation(fields: [receiver_id], references: [id])
+    user                User                @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
+    attachments         CFDIAttachment[]
+    related_cfdis       CFDIRelation[]
+    concepts            Concept[]
+    notifications       Notification[]
+    payment_complements PaymentComplement[]
+    reports             Report[]
+    visualizations      Visualization[]
 
-  related_cfdis     CFDIRelation[]
-  user              User      @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
-  issuer            Issuer    @relation(fields: [issuer_id], references: [rfc_issuer], onDelete: Restrict, onUpdate: Cascade)
-  receiver          Receiver? @relation(fields: [receiver_id], references: [id], onDelete: SetNull)
-  payment_complements PaymentComplement[]
-
-  attachments       CFDIAttachment[]
-  concepts          Concept[]
-  reports           Report[]
-  visualizations    Visualization[]
-  notifications     Notification[]
-
-  @@index([user_id])
-  @@index([issue_date])
-  @@index([receiver_id])
+    @@index([user_id])
+    @@index([issue_date])
+    @@index([receiver_id])
 }
-
 
 model CFDIAttachment {
     id           BigInt   @id @default(autoincrement())
     cfdi_id      BigInt
     file_type    String   @db.VarChar(10)
-    file_content String   @db.Text
-    created_at   DateTime @default(now()) @db.Timestamptz
-    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    file_content String
+    created_at   DateTime @default(now()) @db.Timestamptz(6)
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
 
     @@index([cfdi_id])
 }
 
 model Concept {
-    id           BigInt   @id @default(autoincrement())
-    cfdi_id      BigInt
-    fiscal_key   String?  @db.VarChar(50)
-    description  String?  @db.Text
-    quantity     Float
-    unit_value   Float
-    amount       Float
-    discount     Float    @default(0)
-    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-    taxes        Taxes[]
+    id          BigInt  @id @default(autoincrement())
+    cfdi_id     BigInt
+    fiscal_key  String? @db.VarChar(50)
+    description String?
+    quantity    Float
+    unit_value  Float
+    amount      Float
+    discount    Float   @default(0)
+    cfdi        CFDI    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
+    taxes       Taxes[]
 
     @@index([cfdi_id])
 }
 
 model Taxes {
-    id           BigInt   @id @default(autoincrement())
-    concept_id   BigInt
-    tax_type     String   @db.VarChar(50)
-    rate         Float
-    amount       Float
-    concept      Concept  @relation(fields: [concept_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    id         BigInt  @id @default(autoincrement())
+    concept_id BigInt
+    tax_type   String  @db.VarChar(50)
+    rate       Float
+    amount     Float
+    concept    Concept @relation(fields: [concept_id], references: [id], onDelete: Cascade)
 
     @@index([concept_id])
 }
 
 model CFDIRelation {
-    id           BigInt   @id @default(autoincrement())
-    cfdi_id      BigInt
-    related_uuid String   @db.VarChar(36)
-    relation_type String  @db.VarChar(10)
-    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    id            BigInt @id @default(autoincrement())
+    cfdi_id       BigInt
+    related_uuid  String @db.VarChar(36)
+    relation_type String @db.VarChar(10)
+    cfdi          CFDI   @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
 
-    @@index([cfdi_id])
     @@unique([cfdi_id, related_uuid])
+    @@index([cfdi_id])
 }
 
 model Report {
     id           BigInt   @id @default(autoincrement())
     cfdi_id      BigInt
     format       String   @db.VarChar(10)
-    file_content String   @db.Text
-    created_at   DateTime @default(now()) @db.Timestamptz
+    file_content String
+    created_at   DateTime @default(now()) @db.Timestamptz(6)
     user_id      String   @db.VarChar(13)
-    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
-    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
 
     @@index([cfdi_id])
     @@index([user_id])
 }
 
 model Visualization {
-    id           BigInt   @id @default(autoincrement())
-    user_id      String   @db.VarChar(13)
-    cfdi_id      BigInt?  // Opcional
-    type         String   @db.VarChar(20)
-    config       Json?
-    created_at   DateTime @default(now()) @db.Timestamptz
-    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
-    cfdi         CFDI?    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    id         BigInt   @id @default(autoincrement())
+    user_id    String   @db.VarChar(13)
+    cfdi_id    BigInt?
+    type       String   @db.VarChar(20)
+    config     Json?
+    created_at DateTime @default(now()) @db.Timestamptz(6)
+    cfdi       CFDI?    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
+    user       User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
 
     @@index([user_id])
     @@index([cfdi_id])
 }
 
 model Notification {
-    id           BigInt   @id @default(autoincrement())
-    user_id      String   @db.VarChar(13)
-    cfdi_id      BigInt?  // Opcional
-    type         String   @db.VarChar(50)
-    status       String   @db.VarChar(20)
-    payload      Json?
-    created_at   DateTime @default(now()) @db.Timestamptz
-    sent_at      DateTime?
-    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
-    cfdi         CFDI?    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    id         BigInt    @id @default(autoincrement())
+    user_id    String    @db.VarChar(13)
+    cfdi_id    BigInt?
+    type       String    @db.VarChar(50)
+    status     String    @db.VarChar(20)
+    payload    Json?
+    created_at DateTime  @default(now()) @db.Timestamptz(6)
+    sent_at    DateTime?
+    cfdi       CFDI?     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
+    user       User      @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
 
     @@index([user_id])
     @@index([cfdi_id])
 }
 
 model AuditLog {
-
-    id           BigInt   @id @default(autoincrement())
-    user_id      String?  @db.VarChar(13)
-    action       String   @db.VarChar(100)
-    details      Json?
-    created_at   DateTime @default(now()) @db.Timestamptz
-    user         User?    @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    id         BigInt   @id @default(autoincrement())
+    user_id    String?  @db.VarChar(13)
+    action     String   @db.VarChar(100)
+    details    Json?
+    created_at DateTime @default(now()) @db.Timestamptz(6)
+    user       User?    @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
 
     @@index([user_id])
     @@index([created_at])
@@ -203,35 +215,59 @@ model BatchJob {
     status       String   @db.VarChar(20)
     query        Json?
     result_count Int
-    created_at   DateTime @default(now()) @db.Timestamptz
-    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    created_at   DateTime @default(now()) @db.Timestamptz(6)
+    user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
 
     @@index([user_id])
     @@index([created_at])
 }
 
 model Receiver {
-  id           Int      @id @default(autoincrement())
-  rfc_receiver String   @db.VarChar(20)
-  name_receiver String? @db.VarChar(150)
-  cfdi_use     String?  @db.VarChar(50)
-  tax_regime   String?  @db.VarChar(100)
-  tax_address  String?  @db.VarChar(255)
-  cfdis        CFDI[]   // relación inversa
+    id            Int     @id @default(autoincrement())
+    rfc_receiver  String  @db.VarChar(20)
+    name_receiver String? @db.VarChar(150)
+    cfdi_use      String? @db.VarChar(50)
+    tax_regime    String? @db.VarChar(100)
+    tax_address   String? @db.VarChar(255)
+    cfdis         CFDI[]
 
-  @@map("Receiver")
+    @@map("Receiver")
 }
 
 model PaymentComplement {
-  id               Int      @id @default(autoincrement()) @map("Payment_ID")
-  cfdi_id          BigInt
-  payment_date     DateTime @db.Date
-  payment_form     String?  @db.VarChar(50)
-  payment_currency String?  @db.VarChar(10)
-  payment_amount   Float?
-  cfdi             CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
+    id               Int      @id @default(autoincrement()) @map("Payment_ID")
+    cfdi_id          BigInt
+    payment_date     DateTime @db.Date
+    payment_form     String?  @db.VarChar(50)
+    payment_currency String?  @db.VarChar(10)
+    payment_amount   Float?
+    cfdi             CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
 
-  @@map("PaymentComplement")
-  @@index([cfdi_id])
+    @@index([cfdi_id])
+    @@map("PaymentComplement")
 }
 
+model ApiKey {
+    id         BigInt    @id @default(autoincrement())
+    key        String    @unique @db.VarChar(255)
+    created_at DateTime  @default(now()) @db.Timestamptz
+    expires_at DateTime? @db.Timestamptz
+    revoked_at DateTime? @db.Timestamptz
+    active     Boolean   @default(true)
+    user_id    String    @db.VarChar(13)
+    tenant_id  String?   @db.VarChar(50)
+    user       User      @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    tenant     Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
+
+model RefreshToken {
+    id         BigInt    @id @default(autoincrement())
+    token      String    @unique @db.VarChar(255)
+    expires_at DateTime  @db.Timestamptz
+    created_at DateTime  @default(now()) @db.Timestamptz
+    revoked_at DateTime? @db.Timestamptz
+    user_id    String    @db.VarChar(13)
+    tenant_id  String?   @db.VarChar(50)
+    user       User      @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
+    tenant     Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+}
