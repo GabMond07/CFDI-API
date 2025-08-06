@@ -52,6 +52,8 @@ class CFDIFilter(BaseModel):
     min_total: Optional[float] = Field(None, ge=0, description="Monto mínimo")
     max_total: Optional[float] = Field(None, ge=0, description="Monto máximo")
     status: Optional[str] = Field(None, max_length=20, description="Estado del CFDI")
+    format: str = Field("json", description="Formato de salida: json, xml, csv, excel")
+    save_report: bool = Field(False, description="Indica si se debe guardar el reporte en la DB")
 
     @validator('end_date')
     def validate_date_range(cls, v, values):
@@ -64,6 +66,12 @@ class CFDIFilter(BaseModel):
         if v and values.get('min_total') and v < values['min_total']:
             raise ValueError('max_total must be greater than or equal to min_total')
         return v
+
+    @validator('format')
+    def validate_format(cls, v):
+        if v.lower() not in ["json", "xml", "csv", "excel"]:
+            raise ValueError("Format must be json, xml, csv, or excel")
+        return v.lower()
 
 class DataSource(BaseModel):
     table: TableType = Field(..., description="Tabla a consultar")

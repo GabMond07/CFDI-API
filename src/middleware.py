@@ -1,8 +1,8 @@
 from fastapi import Request, HTTPException
 import jwt
 from src.auth import SECRET_KEY, ALGORITHM
-from datetime import datetime, timezone
 from src.database import db
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,7 +11,7 @@ async def auth_middleware(request: Request, call_next):
     """
     Middleware para validar tokens JWT o claves de API en las solicitudes.
     Excluye los endpoints de login, registro, logout y rutas públicas.
-    Evita consultas a la base de datos para validaciones básicas.
+    Carga permisos del rol para RBAC.
     """
     start_time = datetime.now(timezone.utc)
     
@@ -38,8 +38,7 @@ async def auth_middleware(request: Request, call_next):
         try:
             token = token.replace("Bearer ", "")
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            # Estandarizar request.state.user para incluir 'sub'
-            request.state.user = {"sub": payload.get("sub"), "role_id": payload.get("role_id")}
+            request.state.user = payload
         except jwt.ExpiredSignatureError:
             raise HTTPException(status_code=401, detail="Token expired")
         except jwt.InvalidTokenError:
@@ -53,11 +52,10 @@ async def auth_middleware(request: Request, call_next):
             raise HTTPException(status_code=401, detail="API Key expired")
         if api_key_record.revoked_at and api_key_record.revoked_at < datetime.now(timezone.utc):
             raise HTTPException(status_code=401, detail="API Key revoked")
-        user = await db.user.find_unique(where={"rfc": api_key_record.user_id})
+        user = await db.user.find_unique(where={"rfc": api_key_record.user_id}, include={"role": True})
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
-        # Estandarizar request.state.user para incluir 'sub'
-        request.state.user = {"sub": user.rfc, "role_id": user.role_id}
+        request.state.user = user.dict()
 
     response = await call_next(request)
     logger.info(f"Middleware (autenticado) tomó {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
