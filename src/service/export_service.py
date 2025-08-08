@@ -1,79 +1,85 @@
-from fastapi import HTTPException
 from src.database import db
-from src.event_bus.publisher import publish_event
-from datetime import datetime, timezone
 import json
-import pandas as pd
-from dicttoxml import dicttoxml
+import xml.etree.ElementTree as ET
+import csv
+import io
 import base64
-import os
+import pandas as pd
+from datetime import datetime, timezone
 import logging
 
 logger = logging.getLogger(__name__)
 
-async def generate_report_from_data(data: list, format_type: str, user: dict, cfdi_id: int = None, save_report: bool = False):
+async def generate_report_from_data(data: list, format_type: str, user: dict, cfdi_id: int = None, save_report: bool = False) -> dict:
     """
-    Genera un reporte a partir de datos proporcionados en el formato especificado.
+    Genera un reporte a partir de datos en el formato especificado.
     Opcionalmente guarda el reporte en la base de datos.
     """
-    start_time = datetime.now(timezone.utc)
     format_type = format_type.lower()
-    if format_type not in ["json", "xml", "csv", "excel"]:
-        raise HTTPException(status_code=400, detail="Invalid format. Use json, xml, csv, or excel")
-
-    if not data:
-        raise HTTPException(status_code=404, detail="No data provided for report")
-
-    # Generar contenido según el formato
-    file_content = None  # Contenido para la respuesta HTTP
-    file_content_base64 = None  # Contenido para almacenamiento en DB
-    content_type = ""
-    
-    if format_type == "json":
-        file_content = json.dumps(data, ensure_ascii=False)
-        file_content_base64 = file_content
-        content_type = "application/json"
-    elif format_type == "xml":
-        file_content = dicttoxml(data, custom_root="data", attr_type=False).decode("utf-8")
-        file_content_base64 = file_content
-        content_type = "application/xml"
-    elif format_type == "csv":
-        df = pd.DataFrame(data)
-        file_content = df.to_csv(index=False)
-        file_content_base64 = file_content
-        content_type = "text/csv"
-    elif format_type == "excel":
-        df = pd.DataFrame(data)
-        temp_file = "temp.xlsx"
-        output = pd.ExcelWriter(temp_file, engine="openpyxl")
-        df.to_excel(output, index=False)
-        output.close()
-        with open(temp_file, "rb") as f:
-            file_content = f.read()
-            file_content_base64 = base64.b64encode(file_content).decode("utf-8")
-        content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-        os.remove(temp_file)
-
-    # Guardar el reporte en la base de datos si se solicita
+    file_content = None
+    content_type = None
     report_id = None
-    if save_report:
-        report_data = {
-            "format": format_type.upper(),
-            "file_content": file_content_base64,
-            "user_id": user["rfc"]
+
+    try:
+        if format_type == "json":
+            file_content = json.dumps(data, ensure_ascii=False, default=str).encode("utf-8")
+            content_type = "application/json"
+        elif format_type == "xml":
+            root = ET.Element("Report")
+            for item in data:
+                record = ET.SubElement(root, "Record")
+                for key, value in item.items():
+                    field = ET.SubElement(record, key)
+                    field.text = str(value)
+            file_content = ET.tostring(root, encoding="utf-8")
+            content_type = "application/xml"
+        elif format_type == "csv":
+            if not data:
+                file_content = "".encode("utf-8")
+            else:
+                output = io.StringIO()
+                writer = csv.DictWriter(output, fieldnames=data[0].keys())
+                writer.writeheader()
+                writer.writerows(data)
+                file_content = output.getvalue().encode("utf-8")
+                output.close()
+            content_type = "text/csv"
+        elif format_type == "excel":
+            if not data:
+                file_content = "".encode("utf-8")
+            else:
+                # Convertir datos a DataFrame, manejando estructuras anidadas
+                df = pd.DataFrame(data)
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine="openpyxl") as writer:
+                    df.to_excel(writer, index=False, sheet_name="Report")
+                file_content = output.getvalue()
+                output.close()
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        else:
+            raise ValueError(f"Unsupported format: {format_type}")
+
+        # Guardar el reporte si save_report es True
+        if save_report:
+            file_content_base64 = base64.b64encode(file_content).decode("utf-8")
+            report = await db.report.create({
+                "data": {
+                    "format": format_type.upper(),
+                    "file_content": file_content_base64,
+                    "created_at": datetime.now(timezone.utc),
+                    "user_id": user["rfc"],
+                    "cfdi_id": cfdi_id
+                }
+            })
+            report_id = report.id
+            logger.info(f"Report saved with ID {report_id} for user {user['rfc']}")
+
+        return {
+            "content": file_content,
+            "content_type": content_type,
+            "report_id": report_id
         }
-        if cfdi_id is not None:  # Solo incluir cfdi_id si no es None
-            report_data["cfdi_id"] = cfdi_id
 
-        report = await db.report.create(data=report_data)
-        report_id = report.id
-
-        await publish_event("report_generated", {
-            "report_id": report_id,
-            "user_id": user["rfc"],
-            "format": format_type,
-            "timestamp": datetime.now(timezone.utc).isoformat()
-        })
-
-    logger.info(f"Reporte generado (formato: {format_type}, guardado: {save_report}) para RFC: {user['rfc']} en {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
-    return {"content": file_content, "content_type": content_type, "report_id": report_id}
+    except Exception as e:
+        logger.error(f"Error generating report in format {format_type}: {str(e)}")
+        raise Exception(f"Failed to generate report: {str(e)}")

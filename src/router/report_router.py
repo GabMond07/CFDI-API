@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
-@router.get("/download/{report_id}", dependencies=[Depends(require_permissions(["reports_generate"]))])
+@router.get("/download/{report_id}", dependencies=[Depends(require_permissions(["reports:generate"]))])
 async def download_report(report_id: int, user: dict = Depends(get_current_user)):
     """
     Descarga un reporte previamente generado por su ID.
