@@ -65,9 +65,9 @@ class JoinService:
             if left.startswith("cfdi.receiver_id") and TableType.RECEIVER not in sources:
                 raise ValueError("RECEIVER must be in sources for cfdi.receiver_id join")
 
-    def get_predefined_joins(self, page: int = 1, page_size: int = 100) -> Dict:
-        """Devuelve una lista paginada de consultas predefinidas disponibles."""
-        predefined_joins = [
+    def get_predefined_joins(self) -> List[Dict]:
+        """Devuelve una lista de consultas predefinidas disponibles."""
+        return [
             {
                 "id": 1,
                 "name": "cfdi_with_issuer",
@@ -196,27 +196,9 @@ class JoinService:
             }
         ]
 
-        total_items = len(predefined_joins)
-        total_pages = math.ceil(total_items / page_size) if total_items > 0 else 1
-
-        # Validar parámetros de paginación
-        if page < 1:
-            raise HTTPException(status_code=400, detail="Page must be greater than or equal to 1")
-        if page_size < 1 or page_size > 1000:
-            raise HTTPException(status_code=400, detail="Page size must be between 1 and 1000")
-
-        # Aplicar paginación
-        start = (page - 1) * page_size
-        end = start + page_size
-        paginated_joins = predefined_joins[start:end]
-
-        return {
-            "predefined_joins": paginated_joins,
-        }
-
     async def execute_predefined_join(self, join_id: int, filters: Optional[CFDIFilter], page: int, page_size: int) -> Dict:
         """Ejecuta una consulta predefinida por su ID."""
-        predefined_joins = self.get_predefined_joins(page=1, page_size=1000)["predefined_joins"]
+        predefined_joins = self.get_predefined_joins()
         join_def = next((j for j in predefined_joins if j["id"] == join_id), None)
         if not join_def:
             raise HTTPException(status_code=404, detail="Predefined join not found")
@@ -250,7 +232,7 @@ class JoinService:
                     "uuid": cfdi.uuid,
                     "serie": cfdi.serie,
                     "folio": cfdi.folio,
-                    "issue_date": cfdi.issue_date.isoformat(),
+                    "issue_date": cfdi.issue_date.isoformat() if cfdi.issue_date else None,
                     "total": cfdi.total,
                     "subtotal": cfdi.subtotal,
                     "issuer_name": cfdi.issuer.name_issuer if cfdi.issuer else None,
@@ -298,7 +280,7 @@ class JoinService:
                     "uuid": cfdi.uuid,
                     "serie": cfdi.serie,
                     "folio": cfdi.folio,
-                    "issue_date": cfdi.issue_date.isoformat(),
+                    "issue_date": cfdi.issue_date.isoformat() if cfdi.issue_date else None,
                     "total": cfdi.total,
                     "subtotal": cfdi.subtotal,
                     "type": cfdi.type,
@@ -403,7 +385,7 @@ class JoinService:
                 result.append({
                     "id": report.id,
                     "format": report.format,
-                    "created_at": report.created_at.isoformat(),
+                    "created_at": report.created_at.isoformat() if report.created_at else None,
                     "cfdi_uuid": report.cfdi.uuid if report.cfdi else None,
                     "cfdi_serie": report.cfdi.serie if report.cfdi else None,
                     "cfdi_folio": report.cfdi.folio if report.cfdi else None,
@@ -425,7 +407,7 @@ class JoinService:
                     "id": vis.id,
                     "type": vis.type,
                     "config": vis.config,
-                    "created_at": vis.created_at.isoformat(),
+                    "created_at": vis.created_at.isoformat() if vis.created_at else None,
                     "cfdi_uuid": vis.cfdi.uuid if vis.cfdi else None,
                     "cfdi_serie": vis.cfdi.serie if vis.cfdi else None,
                     "cfdi_folio": vis.cfdi.folio if vis.cfdi else None
@@ -446,7 +428,7 @@ class JoinService:
                     "id": notif.id,
                     "type": notif.type,
                     "status": notif.status,
-                    "created_at": notif.created_at.isoformat(),
+                    "created_at": notif.created_at.isoformat() if notif.created_at else None,
                     "sent_at": notif.sent_at.isoformat() if notif.sent_at else None,
                     "cfdi_uuid": notif.cfdi.uuid if notif.cfdi else None,
                     "cfdi_serie": notif.cfdi.serie if notif.cfdi else None,
@@ -471,7 +453,7 @@ class JoinService:
                         "serie": cfdi.serie,
                         "folio": cfdi.folio,
                         "total": cfdi.total,
-                        "payment_date": pc.payment_date.isoformat(),
+                        "payment_date": pc.payment_date.isoformat() if pc.payment_date else None,
                         "payment_form": pc.payment_form,
                         "payment_amount": pc.payment_amount
                     })
@@ -495,7 +477,7 @@ class JoinService:
                         "folio": cfdi.folio,
                         "attachment_id": attachment.id,
                         "file_type": attachment.file_type,
-                        "created_at": attachment.created_at.isoformat()
+                        "created_at": attachment.created_at.isoformat() if attachment.created_at else None
                     })
 
         # Consulta 12: CFDI con relaciones
@@ -603,7 +585,7 @@ class JoinService:
                     "rfc": user.rfc,
                     "username": user.username,
                     "email": user.email,
-                    "created_at": user.created_at.isoformat(),
+                    "created_at": user.created_at.isoformat() if user.created_at else None,
                     "role": user.role.role if user.role else None,
                     "tenant_name": user.tenant.name if user.tenant else None
                 })
@@ -622,7 +604,7 @@ class JoinService:
                     "id": job.id,
                     "status": job.status,
                     "result_count": job.result_count,
-                    "created_at": job.created_at.isoformat()
+                    "created_at": job.created_at.isoformat() if job.created_at else None
                 })
 
         # Consulta 18: Vista completa de CFDI
@@ -648,7 +630,7 @@ class JoinService:
                     "uuid": cfdi.uuid,
                     "serie": cfdi.serie,
                     "folio": cfdi.folio,
-                    "issue_date": cfdi.issue_date.isoformat(),
+                    "issue_date": cfdi.issue_date.isoformat() if cfdi.issue_date else None,
                     "total": cfdi.total,
                     "type": cfdi.type,
                     "issuer_name": cfdi.issuer.name_issuer if cfdi.issuer else None,
@@ -672,15 +654,17 @@ class JoinService:
                 logger.warning(f"Folio {filters.folio} no encontrado para RFC {self.user_rfc}")
 
         # Generar el reporte
+        format_type = filters.format if filters else "json"
+        save_report = filters.save_report if filters else False
         report_result = await generate_report_from_data(
             data=result,
-            format_type=filters.format if filters else "json",
+            format_type=format_type,
             user={"rfc": self.user_rfc},
             cfdi_id=cfdi_id,
-            save_report=filters.save_report if filters else False
+            save_report=save_report
         )
 
-        logger.info(f"Predefined join {join_def['name']} ejecutado para RFC: {self.user_rfc} en formato {filters.format if filters else 'json'}")
+        logger.info(f"Predefined join {join_def['name']} ejecutado para RFC: {self.user_rfc} en formato {format_type} con save_report={save_report}")
         return {
             "content": report_result["content"],
             "content_type": report_result["content_type"],
@@ -746,15 +730,17 @@ class JoinService:
                 logger.warning(f"Folio {request.filters.folio} no encontrado para RFC {self.user_rfc}")
 
         # Generar el reporte
+        format_type = request.filters.format if request.filters else request.format
+        save_report = request.filters.save_report if request.filters else request.save_report
         report_result = await generate_report_from_data(
             data=result,
-            format_type=request.format,
+            format_type=format_type,
             user={"rfc": self.user_rfc},
             cfdi_id=cfdi_id,
-            save_report=request.save_report
+            save_report=save_report
         )
 
-        logger.info(f"Join personalizado ejecutado para RFC: {self.user_rfc} en formato {request.format} en {(datetime.now() - start_time).total_seconds():.2f} segundos")
+        logger.info(f"Join personalizado ejecutado para RFC: {self.user_rfc} en formato {format_type} con save_report={save_report} en {(datetime.now() - start_time).total_seconds():.2f} segundos")
         
         return {
             "content": report_result["content"],

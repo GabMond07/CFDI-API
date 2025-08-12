@@ -152,30 +152,39 @@ async def basic_stats(
 @router.post("/join", dependencies=[Depends(require_permissions(["join:execute"]))])
 async def join_data(
     request: Request,
-    join_request: JoinRequest,  # Cuerpo JSON explícito
+    join_request: JoinRequest,
+    filters: CFDIFilter = Depends(),
     page: int = Query(1, ge=1, description="Número de página (comienza en 1)"),
     page_size: int = Query(100, ge=1, le=1000, description="Número de registros por página")
 ):
     """
     Combina datos de múltiples tablas (joins virtuales).
-    Acepta filtros en el campo 'filters' de JoinRequest.
+    Aplica filtros adicionales desde CFDIFilter.
     Devuelve el resultado en el formato especificado (json, xml, csv, excel).
     Opcionalmente guarda el resultado como un reporte.
     Incluye paginación con page, page_size y total_pages.
     """
     start_time = datetime.now(timezone.utc)
     user_rfc = request.state.user["sub"]
-    logger.info(f"Received request for /join: {join_request}, page: {page}, page_size: {page_size}")
+    logger.info(f"Received request for /join: {join_request}, filters={filters}, page={page}, page_size={page_size}")
 
     # Validar parámetros de paginación
     if page_size == 0:
         raise HTTPException(status_code=422, detail="page_size must be greater than 0")
 
+    # Combinar filtros de join_request y CFDIFilter
+    combined_filters = filters.model_copy() if filters else CFDIFilter(format="json", save_report=False)
+    if join_request.filters:
+        combined_filters = join_request.filters.model_copy(update=filters.dict(exclude_unset=True))
+
+    # Actualizar join_request con los filtros combinados
+    updated_join_request = join_request.model_copy(update={"filters": combined_filters})
+
     service = JoinService(user_rfc)
     
     # Procesar los datos con paginación
     try:
-        result = await service.join_data(join_request, page, page_size)
+        result = await service.join_data(updated_join_request, page, page_size)
     except ValueError as e:
         logger.error(f"Invalid join request: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
@@ -183,7 +192,7 @@ async def join_data(
         logger.error(f"Error in join_data: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
-    logger.info(f"Join personalizado generado para RFC: {user_rfc} en formato {join_request.format} en {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
+    logger.info(f"Join personalizado generado para RFC: {user_rfc} en formato {combined_filters.format} en {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
     return {
         "content": result["content"],
         "content_type": result["content_type"],
@@ -203,7 +212,6 @@ async def predefined_join(
 ):
     """
     Ejecuta una consulta predefinida de join.
-    Acepta filtros en el cuerpo JSON (CFDIFilter).
     Devuelve el resultado en el formato especificado (json, xml, csv, excel).
     Opcionalmente guarda el resultado como un reporte.
     Incluye paginación con page, page_size y total_pages.
@@ -249,7 +257,7 @@ async def list_predefined_joins(
     start_time = datetime.now(timezone.utc)
     user_rfc = request.state.user["sub"]
     service = JoinService(user_rfc)
-    result = service.get_predefined_joins(page, page_size)
+    result = service.get_predefined_joins()
     logger.info(f"Lista de consultas predefinidas generada para RFC: {user_rfc} en {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos")
     return result
 
