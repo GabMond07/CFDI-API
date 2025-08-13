@@ -65,6 +65,8 @@ class CFDIFilter(BaseModel):
     status: Optional[str] = Field(None, max_length=20, description="Estado del CFDI")
     format: str = Field("json", description="Formato de salida: json, xml, csv, excel")
     save_report: bool = Field(False, description="Indica si se debe guardar el reporte en la DB")
+    name: Optional[str] = Field(None, description="Nombre del reporte")
+    description: Optional[str] = Field(None, description="Descripción del reporte")
 
     @validator('end_date')
     def validate_date_range(cls, v, values):
@@ -80,8 +82,8 @@ class CFDIFilter(BaseModel):
 
     @validator('format')
     def validate_format(cls, v):
-        if v.lower() not in ["json", "xml", "csv", "excel"]:
-            raise ValueError("Format must be json, xml, csv, or excel")
+        if v.lower() not in ["json", "xml", "csv", "excel", "pdf"]:
+            raise ValueError("Format must be json, xml, csv, excel, or pdf")
         return v.lower()
 
 class DataSource(BaseModel):
@@ -152,11 +154,13 @@ class JoinRequest(BaseModel):
     sources: List[TableType] = Field(..., description="Tablas involucradas en el join")
     format: str = Field("json", description="Formato de salida: json, xml, csv, excel")
     save_report: bool = Field(False, description="Indica si se debe guardar el reporte en la DB")
+    name: Optional[str] = Field(None, description="Nombre del reporte")
+    description: Optional[str] = Field(None, description="Descripción del reporte")
 
     @validator('format')
     def validate_format(cls, v):
-        if v.lower() not in ["json", "xml", "csv", "excel"]:
-            raise ValueError("Format must be json, xml, csv, or excel")
+        if v.lower() not in ["json", "xml", "csv", "excel", "pdf"]:
+            raise ValueError("Format must be json, xml, csv, excel, or pdf")
         return v.lower()
         
 class StatsRequest(BaseModel):
