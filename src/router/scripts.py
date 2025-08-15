@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Request, HTTPException, Depends, BackgroundTasks
 from fastapi.responses import JSONResponse
 from src.service.script_service import ScriptService, ScriptExecutionError, SecurityError
-from src.Models.visualize import ScriptRequest, SQLScriptRequest
+from src.Models.operation.visualize_copy import ScriptRequest, SQLScriptRequest
 from typing import Dict, Any
 import logging
 import asyncio

@@ -1,5 +1,6 @@
 from src.database import db
-from src.Models.visualize import CFDIFilter, SetOperationRequest, OperationType, TableType
+from src.Models.operation.common import CFDIFilter, TableType
+from src.Models.operation.set_operation import SetOperationRequest, OperationType
 from typing import Dict, List, Optional
 from datetime import datetime
 import logging

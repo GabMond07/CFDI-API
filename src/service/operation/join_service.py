@@ -1,6 +1,6 @@
 from src.database import db
-from src.Models.visualize import CFDIFilter, JoinRequest, TableType
-from src.service.export_service import generate_report_from_data
+from src.Models.operation.common import CFDIFilter, TableType
+from src.service.operation.export_service import generate_report_from_data
 from typing import Dict, List, Optional
 import math
 import logging
@@ -51,23 +51,9 @@ class JoinService:
                 where_conditions["total"]["lte"] = filters.max_total
         return where_conditions
 
-    def _validate_join_conditions(self, on: Dict[str, str], sources: List[TableType]) -> None:
-        """Valida las condiciones de join especificadas en el campo 'on'."""
-        valid_joins = {
-            "cfdi.issuer_id": "issuer.rfc",
-            "cfdi.receiver_id": "receiver.rfc"
-        }
-        for left, right in on.items():
-            if left not in valid_joins or valid_joins[left] != right:
-                raise ValueError(f"Invalid join condition: {left} = {right}")
-            if left.startswith("cfdi.issuer_id") and TableType.ISSUER not in sources:
-                raise ValueError("ISSUER must be in sources for cfdi.issuer_id join")
-            if left.startswith("cfdi.receiver_id") and TableType.RECEIVER not in sources:
-                raise ValueError("RECEIVER must be in sources for cfdi.receiver_id join")
-
-    def get_predefined_joins(self) -> List[Dict]:
-        """Devuelve una lista de consultas predefinidas disponibles."""
-        return [
+    def get_predefined_joins(self, page: int = 1, page_size: int = 100) -> Dict:
+        """Devuelve una lista de consultas predefinidas disponibles con paginación."""
+        predefined_joins = [
             {
                 "id": 1,
                 "name": "cfdi_with_issuer",
@@ -193,25 +179,63 @@ class JoinService:
                 "description": "Vista completa de CFDI con toda la información relacionada",
                 "tables": ["CFDI", "Issuer", "Receiver", "Concept", "CFDIAttachment", "PaymentComplement"],
                 "join_type": "inner_left"
+            },
+            {
+                "id": 19,
+                "name": "cfdi_by_receiver",
+                "description": "Resumen por receptor",
+                "tables": ["CFDI", "Receiver"],
+                "join_type": "inner"
+            },
+            {
+                "id": 20,
+                "name": "cfdi_with_concepts_relations",
+                "description": "CFDI con conceptos y relaciones",
+                "tables": ["CFDI", "Concept", "CFDIRelation"],
+                "join_type": "inner"
+            },
+            {
+                "id": 21,
+                "name": "payment_complement_monthly",
+                "description": "Resumen mensual de complementos de pago",
+                "tables": ["CFDI", "PaymentComplement"],
+                "join_type": "inner"
+            },
+            {
+                "id": 22,
+                "name": "cfdi_with_cancellation_status",
+                "description": "CFDI con estado de cancelación",
+                "tables": ["CFDI", "Cancellation"],
+                "join_type": "left"
             }
         ]
+        total_count = len(predefined_joins)
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+        start = (page - 1) * page_size
+        end = start + page_size
+        return {
+            "joins": predefined_joins[start:end],
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "total_count": total_count
+        }
 
     async def execute_predefined_join(self, join_id: int, filters: Optional[CFDIFilter], page: int, page_size: int) -> Dict:
         """Ejecuta una consulta predefinida por su ID."""
-        predefined_joins = self.get_predefined_joins()
+        predefined_joins = self.get_predefined_joins(page=1, page_size=1000)["joins"]
         join_def = next((j for j in predefined_joins if j["id"] == join_id), None)
         if not join_def:
             raise HTTPException(status_code=404, detail="Predefined join not found")
 
         where_conditions = self._build_where_conditions(filters)
         include = {}
-        group_by = []
         result = []
         total_count = 0
         total_pages = 1
 
         # Validar que las fechas estén definidas para consultas de resumen
-        if join_def["name"] in ["cfdi_monthly_summary", "cfdi_by_issuer", "cfdi_by_type"]:
+        if join_def["name"] in ["cfdi_monthly_summary", "cfdi_by_issuer", "cfdi_by_type", "payment_complement_monthly"]:
             if not filters or not filters.start_date or not filters.end_date:
                 raise HTTPException(status_code=400, detail="start_date and end_date are required for summary queries")
 
@@ -370,6 +394,7 @@ class JoinService:
                     "total_tax_amount": summary["total_tax_amount"],
                     "tax_count": summary["tax_count"]
                 })
+            total_count = len(tax_summary)
 
         # Consulta 7: Reportes del usuario
         elif join_def["id"] == 7:
@@ -642,110 +667,112 @@ class JoinService:
                     "payment_complement_count": len(cfdi.payment_complements)
                 })
 
-        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
-
-        # Determinar cfdi_id
-        cfdi_id = None
-        if filters and filters.folio:
-            cfdi = await db.cfdi.find_first(where={"folio": filters.folio, "user_id": self.user_rfc})
-            if cfdi:
-                cfdi_id = cfdi.id
-            else:
-                logger.warning(f"Folio {filters.folio} no encontrado para RFC {self.user_rfc}")
-
-        # Generar el reporte
-        format_type = filters.format if filters else "json"
-        save_report = filters.save_report if filters else False
-        report_result = await generate_report_from_data(
-            data=result,
-            format_type=format_type,
-            user={"rfc": self.user_rfc},
-            cfdi_id=cfdi_id,
-            save_report=save_report
-        )
-
-        logger.info(f"Predefined join {join_def['name']} ejecutado para RFC: {self.user_rfc} en formato {format_type} con save_report={save_report}")
-        return {
-            "content": report_result["content"],
-            "content_type": report_result["content_type"],
-            "report_id": report_result["report_id"],
-            "page": page,
-            "page_size": page_size,
-            "total_pages": total_pages
-        }
-
-    async def join_data(self, request: JoinRequest, page: int = 1, page_size: int = 100) -> Dict:
-        """
-        Combina datos de múltiples tablas (joins virtuales).
-        Genera el resultado en el formato especificado (json, xml, csv, excel) y opcionalmente lo guarda como un reporte.
-        """
-        start_time = datetime.now()
-        
-        # Validar tablas sensibles
-        forbidden_tables = ["AuthToken", "ApiKey", "RefreshToken", "AuditLog"]
-        if any(table in forbidden_tables for table in request.sources):
-            raise HTTPException(status_code=403, detail="Access to sensitive tables is forbidden")
-
-        # Validar join conditions
-        self._validate_join_conditions(request.on, request.sources)
-
-        where_conditions = self._build_where_conditions(request.filters)
-        include = {}
-        if TableType.RECEIVER in request.sources:
+        # Consulta 19: Resumen por receptor
+        elif join_def["id"] == 19:
             include["receiver"] = True
-        if TableType.ISSUER in request.sources:
-            include["issuer"] = True
+            cfdis = await db.cfdi.find_many(
+                where=where_conditions,
+                include=include,
+                take=page_size,
+                skip=(page - 1) * page_size,
+                order={"total": "desc"}
+            )
+            receiver_summary = {}
+            for cfdi in cfdis:
+                receiver_key = cfdi.receiver.rfc_receiver
+                if receiver_key not in receiver_summary:
+                    receiver_summary[receiver_key] = {
+                        "rfc_receiver": receiver_key,
+                        "name_receiver": cfdi.receiver.name_receiver,
+                        "cfdi_count": 0,
+                        "total_amount": 0.0
+                    }
+                receiver_summary[receiver_key]["cfdi_count"] += 1
+                receiver_summary[receiver_key]["total_amount"] += cfdi.total
+            result = list(receiver_summary.values())
+            total_count = len(receiver_summary)
 
-        # Count total records to calculate total pages
-        total_count = await db.cfdi.count(where=where_conditions)
+        # Consulta 20: CFDI con conceptos y relaciones
+        elif join_def["id"] == 20:
+            include["concepts"] = True
+            include["relations"] = True
+            total_count = await db.cfdi.count(where=where_conditions)
+            cfdis = await db.cfdi.find_many(
+                where=where_conditions,
+                include=include,
+                take=page_size,
+                skip=(page - 1) * page_size,
+                order={"issue_date": "desc"}
+            )
+            for cfdi in cfdis:
+                for concept in cfdi.concepts:
+                    for relation in cfdi.relations:
+                        result.append({
+                            "id": cfdi.id,
+                            "uuid": cfdi.uuid,
+                            "serie": cfdi.serie,
+                            "folio": cfdi.folio,
+                            "total": cfdi.total,
+                            "fiscal_key": concept.fiscal_key,
+                            "concept_description": concept.description,
+                            "concept_amount": concept.amount,
+                            "related_uuid": relation.related_uuid,
+                            "relation_type": relation.relation_type
+                        })
+
+        # Consulta 21: Resumen mensual de complementos de pago
+        elif join_def["id"] == 21:
+            cfdis = await db.cfdi.find_many(
+                where=where_conditions,
+                include={"payment_complements": True},
+                take=page_size,
+                skip=(page - 1) * page_size,
+                order={"issue_date": "desc"}
+            )
+            monthly_summary = {}
+            for cfdi in cfdis:
+                for pc in cfdi.payment_complements:
+                    month = pc.payment_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+                    month_key = month.isoformat()
+                    if month_key not in monthly_summary:
+                        monthly_summary[month_key] = {"payment_count": 0, "total_payment_amount": 0.0}
+                    monthly_summary[month_key]["payment_count"] += 1
+                    monthly_summary[month_key]["total_payment_amount"] += pc.payment_amount
+            for month, summary in monthly_summary.items():
+                result.append({
+                    "month": month,
+                    "payment_count": summary["payment_count"],
+                    "total_payment_amount": summary["total_payment_amount"]
+                })
+            total_count = len(monthly_summary)
+            result.sort(key=lambda x: x["month"], reverse=True)
+
+        # Consulta 22: CFDI con estado de cancelación
+        elif join_def["id"] == 22:
+            include["cancellation"] = True
+            total_count = await db.cfdi.count(where=where_conditions)
+            cfdis = await db.cfdi.find_many(
+                where=where_conditions,
+                include=include,
+                take=page_size,
+                skip=(page - 1) * page_size,
+                order={"issue_date": "desc"}
+            )
+            for cfdi in cfdis:
+                result.append({
+                    "id": cfdi.id,
+                    "uuid": cfdi.uuid,
+                    "serie": cfdi.serie,
+                    "folio": cfdi.folio,
+                    "total": cfdi.total,
+                    "cancellation_status": cfdi.cancellation.status if cfdi.cancellation else "active",
+                    "cancellation_date": cfdi.cancellation.cancellation_date.isoformat() if cfdi.cancellation and cfdi.cancellation.cancellation_date else None
+                })
+
         total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
 
-        # Fetch paginated records
-        cfdis = await db.cfdi.find_many(
-            where=where_conditions,
-            include=include,
-            take=page_size,
-            skip=(page - 1) * page_size,
-            order={"issue_date": "desc"}
-        )
-        
-        # Build result items
-        result = []
-        for cfdi in cfdis:
-            item = {
-                "uuid": cfdi.uuid,
-                "total": cfdi.total,
-                "issuer_name": cfdi.issuer.name_issuer if cfdi.issuer and TableType.ISSUER in request.sources else None,
-                "receiver_name": cfdi.receiver.name_receiver if cfdi.receiver and TableType.RECEIVER in request.sources else None
-            }
-            result.append(item)
-        
-        # Determinar cfdi_id
-        cfdi_id = None
-        if request.filters and request.filters.folio:
-            cfdi = await db.cfdi.find_first(where={"folio": request.filters.folio, "user_id": self.user_rfc})
-            if cfdi:
-                cfdi_id = cfdi.id
-            else:
-                logger.warning(f"Folio {request.filters.folio} no encontrado para RFC {self.user_rfc}")
-
-        # Generar el reporte
-        format_type = request.filters.format if request.filters else request.format
-        save_report = request.filters.save_report if request.filters else request.save_report
-        report_result = await generate_report_from_data(
-            data=result,
-            format_type=format_type,
-            user={"rfc": self.user_rfc},
-            cfdi_id=cfdi_id,
-            save_report=save_report
-        )
-
-        logger.info(f"Join personalizado ejecutado para RFC: {self.user_rfc} en formato {format_type} con save_report={save_report} en {(datetime.now() - start_time).total_seconds():.2f} segundos")
-        
         return {
-            "content": report_result["content"],
-            "content_type": report_result["content_type"],
-            "report_id": report_result["report_id"],
+            "content": result,
             "page": page,
             "page_size": page_size,
             "total_pages": total_pages

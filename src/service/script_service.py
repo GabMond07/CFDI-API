@@ -1,5 +1,5 @@
 from src.database import db
-from src.Models.visualize import CFDIFilter, ScriptRequest, AnalysisLevel
+from src.Models.operation.visualize_copy import CFDIFilter, ScriptRequest, AnalysisLevel
 from typing import Dict, Optional, List, Any
 import docker
 import sqlparse

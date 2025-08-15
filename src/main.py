@@ -5,9 +5,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from src.middleware import auth_middleware
 from src.router import (
     Consulta, issuer, receiver, concept, tax, tax_summary, payment,
-    cfdi_relation, report, notification, auditlog, batchjob,
-    register_user, login_user, logout, visualize, upload_cfdi,
-    operations_statics, scripts, report_router
+    cfdi_relation, notification, auditlog, batchjob,
+    register_user, login_user, logout, upload_cfdi, scripts
 )
 from src.ml.router import sospechoso_router, routerCFDI
 from src.event_bus.consumers.login_consumer import start_login_consumer
@@ -17,6 +16,10 @@ import asyncio
 import os
 import logging
 from dotenv import load_dotenv
+from src.router.operation import (
+    visualize, aggregation, central_tendency, joins, stats_basic
+)
+from src.router.report import report, report_router
 # from pyinstrument import Profiler  
 
 # Configurar logging
@@ -84,9 +87,12 @@ app.include_router(visualize.router, prefix="/api/v1")
 app.include_router(upload_cfdi.router, prefix="/api/v1")
 app.include_router(sospechoso_router.router, prefix="/api/v1")
 app.include_router(routerCFDI.router, prefix="/api/v1")
-app.include_router(operations_statics.router, prefix="/api/v1")
 app.include_router(scripts.router, prefix="/api/v1")
 app.include_router(report_router.router, prefix="/api/v1")
+app.include_router(aggregation.router, prefix="/api/v1")
+app.include_router(central_tendency.router, prefix="/api/v1")
+app.include_router(joins.router, prefix="/api/v1")
+app.include_router(stats_basic.router, prefix="/api/v1")
 
 # Eventos de ciclo de vida
 @app.on_event("startup")

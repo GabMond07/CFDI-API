@@ -1,5 +1,5 @@
 from prisma import Prisma
-from src.Models.FiltroReport import FiltroReport
+from src.Models.report.FiltroReport import FiltroReport
 from datetime import datetime, time
 from fastapi import HTTPException
 

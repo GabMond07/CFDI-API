@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Request, Query, Depends, Response, HTTPException
-from src.service.aggregation_service import AggregationService
-from src.service.join_service import JoinService
-from src.service.stats_service import StatsService
-from src.service.operation_service import SetOperationService
-from src.Models.visualize import CFDIFilter, JoinRequest, SetOperationRequest
-from src.service.export_service import generate_report_from_data
+from src.service.operation.aggregation_service import AggregationService
+from src.service.operation.join_service import JoinService
+from src.service.operation.stats_service import StatsService
+from src.service.operation.operation_service import SetOperationService
+from src.Models.operation.common import CFDIFilter
+from src.Models.operation.set_operation import SetOperationRequest
+from src.Models.operation.join import JoinRequest
+from src.service.operation.export_service import generate_report_from_data
 from src.permission import require_permissions
 from datetime import datetime
 from typing import Optional
