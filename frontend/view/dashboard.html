@@ -1,30 +1,41 @@
-<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #003366;">
-    <div class="collapse navbar-collapse">
-        <ul class="navbar-nav mr-auto">
-            <li class="nav-item">
-                <a class="nav-link" href="#" id="nav-consultar">Dashboard</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#" id="nav-consultar">Consultar CFDI</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" href="#" id="logoutBtn">
-                    Cerrar sesión <i class="bi bi-box-arrow-right ms-1"></i>
-                </a>
-            </li>
-        </ul>
+<nav class="navbar navbar-expand-lg py-3" style="background: linear-gradient(90deg, #0056b3, #003366);">
+    <div class="container-fluid">
+        <!-- Izquierda: Marca -->
+        <a class="navbar-brand text-white fw-bold" href="#">CFDI Web</a>
+
+        <!-- Centro y derecha -->
+        <div class="collapse navbar-collapse">
+            <!-- Centro: Menú de navegación centrado -->
+            <ul class="navbar-nav mx-auto">
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="#" id="nav-dashboard">Dashboard</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="#" id="nav-consultar">Consultar CFDI</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="#" id="nav-detalle">Detalle CFDI</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="#" id="nav-clasificacion">Clasificación CFDI</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="#" id="nav-subir">Subir CFDI</a>
+                </li>
+            </ul>
+
+            <!-- Derecha: Cerrar sesión -->
+            <ul class="navbar-nav">
+                <li class="nav-item">
+                    <a class="nav-link text-white" href="#" id="logoutBtn">
+                        Cerrar sesión <i class="bi bi-box-arrow-right ms-1"></i>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </div>
 </nav>
 
 <div class="container mt-4" id="dashboard-content">
     <h3>Bienvenido al sistema</h3>
-</div>
-    <div class="container mt-5">
-    <button id="btn-cargar-grafica" class="btn btn-primary mb-3">Cargar gráfica de predicciones</button>
-    <canvas id="graficaPredicciones" width="600" height="300"></canvas>
-
-        <button id="btn-cargar-sospechoso" class="btn btn-primary mb-3">Cargar gráfica de predicciones sospechoso</button>
-        <canvas id="graficoSospechosos" width="400" height="400"></canvas>
-    </div>
-
 </div>

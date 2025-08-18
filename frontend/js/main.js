@@ -6,4 +6,4 @@ $(document).ready(function () {
     } else {
         loadLogin();
     }
-});
+})
