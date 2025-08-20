@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 from src.database import db 
 import logging
 
-router = APIRouter()
+router = APIRouter(tags=["Data processing and transformation"])
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 

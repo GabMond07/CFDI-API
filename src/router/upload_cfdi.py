@@ -11,7 +11,7 @@ from src.permission import require_permissions
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["Upload CFDI"])
 
 @router.post("/upload_cfdi", dependencies=[Depends(require_permissions(["write_cfdis"]))])
 async def upload_cfdi(
@@ -50,23 +50,23 @@ async def upload_cfdi(
                 
                 # Guardar el XML como string en la base de datos
                 xml_str = xml_content.decode('utf-8')
-                await db.cfdiattachment.create(data={
-                    'cfdi_id': cfdi_record.id,
-                    'file_type': 'xml',
-                    'file_content': xml_str,
-                })
+                # await db.cfdiattachment.create(data={
+                #     'cfdi_id': cfdi_record.id,
+                #     'file_type': 'xml',
+                #     'file_content': xml_str,
+                # })
                 
                 # Buscar PDF correspondiente (si lo hay) basado en el nombre del archivo
-                pdf_file = next((pdf for pdf in pdf_files if pdf.filename.startswith(xml_file.filename.split('.')[0])), None)
-                if pdf_file:
-                    logger.info(f"Procesando archivo PDF asociado: {pdf_file.filename}")
-                    pdf_content = await pdf_file.read()
-                    pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
-                    await db.cfdiattachment.create(data={
-                        'cfdi_id': cfdi_record.id,
-                        'file_type': 'pdf',
-                        'file_content': pdf_base64,
-                    })
+                # pdf_file = next((pdf for pdf in pdf_files if pdf.filename.startswith(xml_file.filename.split('.')[0])), None)
+                # if pdf_file:
+                #     logger.info(f"Procesando archivo PDF asociado: {pdf_file.filename}")
+                #     pdf_content = await pdf_file.read()
+                #     pdf_base64 = base64.b64encode(pdf_content).decode('utf-8')
+                #     await db.cfdiattachment.create(data={
+                #         'cfdi_id': cfdi_record.id,
+                #         'file_type': 'pdf',
+                #         'file_content': pdf_base64,
+                #     })
                 
                 results.append({
                     "filename": xml_file.filename,

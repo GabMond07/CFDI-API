@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter()
+router = APIRouter(tags=["Data Export and Integration"])
 
 @router.get("/download/{report_id}", dependencies=[Depends(require_permissions(["reports:generate"]))])
 async def download_report(report_id: int, user: dict = Depends(get_current_user)):

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from src.database import db
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(tags=["Data processing and transformation"])
 
 @router.post("/visualize", dependencies=[Depends(require_permissions(["reports:generate"]))])
 async def visualize_cfdi(

@@ -3,7 +3,7 @@ from src.Models.filtro_receiver import FiltroReceiver
 from src.service.receiver_service import consultar_receiver
 from src.auth import get_current_user
 
-router = APIRouter()
+router = APIRouter(tags=["Data Query and Filtering"])
 
 @router.get("/receptores")
 async def listar_receptores(

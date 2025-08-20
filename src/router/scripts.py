@@ -8,7 +8,7 @@ import asyncio
 from datetime import datetime
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
+router = APIRouter(tags=["Data Query and Filtering"])
 
 # Cache simple para consultas frecuentes
 _query_cache = {}
