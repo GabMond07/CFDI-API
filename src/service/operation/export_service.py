@@ -33,135 +33,243 @@ def flatten_dict(d: Dict, parent_key: str = '', sep: str = '_') -> Dict:
             items.append((new_key, v))
     return dict(items)
 
-def format_visualize_excel(data: list, filters: Optional[Dict] = None, operation: str = None) -> io.BytesIO:
+def format_visualize_excel(data: list, filters: Optional[Dict] = None, operation: str = None, name: Optional[str] = None, description: Optional[str] = None) -> io.BytesIO:
     """Formatea datos de /api/v1/visualize para exportación a Excel."""
     wb = Workbook()
     ws = wb.active
-    ws.title = "Visualization Report"
+    ws.title = "Reporte de Visualización"
 
     # Estilos
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    title_font = Font(bold=True, size=20, name='Helvetica')
+    body_font = Font(bold=True, size=12, name='Helvetica')
+    meta_font = Font(size=10, name='Helvetica')
+    header_font = Font(bold=True, size=10, color="FFFFFF", name='Helvetica')
+    data_font = Font(size=9, name='Helvetica')
+    header_fill = PatternFill(start_color="003087", end_color="003087", fill_type="solid")  # Azul oscuro
+    data_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # Gris claro
+    details_fill = PatternFill(start_color="F5F5DC", end_color="F5F5DC", fill_type="solid")  # Beige
     border = Border(left=Side(style='thin'), right=Side(style='thin'), 
                     top=Side(style='thin'), bottom=Side(style='thin'))
-    align_center = Alignment(horizontal='center', vertical='center')
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
-    # Metadatos del reporte
-    ws.append(["Visualization Report"])
-    ws.merge_cells('A1:D1')
-    ws['A1'].font = Font(bold=True, size=14)
+    # Título y metadatos
+    ws.append(["Reporte de Visualización"])
+    ws.merge_cells('A1:G1')
+    ws['A1'].font = title_font
     ws['A1'].alignment = align_center
+    ws.append(["Generado", datetime.now(timezone.utc).strftime('%Y-%m-%d')])
+    ws['A2'].font = body_font
+    ws['B2'].font = body_font
+    if operation:
+        ws.append(["Operación", operation.capitalize()])
+        ws['A3'].font = body_font
+        ws['B3'].font = body_font
+    row_offset = 4 if operation else 3
     if filters:
-        ws.append(["Filters", json.dumps(filters, ensure_ascii=False)])
-        ws['A2'].font = Font(italic=True)
-    ws.append(["Generated", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")])
-    ws.append([])
+        exclude_keys = {"format", "save_report", "name", "description"}
+        used_filters = {k: v for k, v in filters.items() if v not in [None, "", [], {}] and k not in exclude_keys}
+        if used_filters:
+            ws.append(["Filtros", ""])
+            ws['A' + str(row_offset)].font = body_font
+            for key, value in used_filters.items():
+                pretty_value = json.dumps(value, ensure_ascii=False, indent=2) if isinstance(value, (dict, list)) else str(value)
+                ws.append([f"• {key}", pretty_value])
+                ws['A' + str(row_offset + 1)].font = meta_font
+                ws['B' + str(row_offset + 1)].font = meta_font
+                row_offset += 1
+    ws.append(["Nombre", name if name else "Sin nombre"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    row_offset += 1
+    ws.append(["Descripción", description if description else "Sin descripción"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    ws.append([])  # Espacio
+    row_offset += 2
 
     # Procesar datos
     if data:
         first_item = data[0]
-        # Encabezados principales (excluyendo details)
-        headers = [k for k in first_item.keys() if k != "details"]
-        if "details" in first_item:
-            headers.append("details_uuid")
-            headers.append("details_total")
-            headers.append("details_issuer_name")
+        # Tabla de metadatos y agregación
+        meta_keys = ["page", "page_size", "total_pages"]
+        agg_keys = ["total_amount", "cfdi_count", "average_total", "min_total", "max_total"]
+        visible_agg_keys = [k for k in agg_keys if k in first_item and first_item[k] is not None]
+        meta_agg_headers = meta_keys + visible_agg_keys
+        meta_agg_headers_display = ["Página", "Tamaño de Página", "Total de Páginas"] + \
+                                  [k.replace("_", " ").title() for k in visible_agg_keys]
+        meta_agg_row = [str(first_item.get(k, "")) if k not in ["total_amount", "average_total", "min_total", "max_total"] 
+                        else f"${float(first_item.get(k, 0)):.2f}" for k in meta_agg_headers]
 
-        ws.append(headers)
-        for cell in ws[ws.max_row]:
+        ws.append(["Metadatos y Agregación"])
+        ws.merge_cells(start_row=row_offset, start_column=1, end_row=row_offset, end_column=len(meta_agg_headers))
+        ws['A' + str(row_offset)].font = body_font
+        ws['A' + str(row_offset)].alignment = align_center
+        row_offset += 1
+        ws.append(meta_agg_headers_display)
+        for cell in ws[row_offset]:
             cell.font = header_font
             cell.fill = header_fill
             cell.border = border
             cell.alignment = align_center
+        row_offset += 1
+        ws.append(meta_agg_row)
+        for cell in ws[row_offset]:
+            cell.font = data_font
+            cell.fill = data_fill
+            cell.border = border
+            cell.alignment = align_center
+        row_offset += 2
 
-        # Datos
+        # Tabla de detalles
+        details_headers = ["UUID", "Total", "Nombre del Emisor"]
+        ws.append(["Detalles"])
+        ws.merge_cells(start_row=row_offset, start_column=1, end_row=row_offset, end_column=len(details_headers))
+        ws['A' + str(row_offset)].font = body_font
+        ws['A' + str(row_offset)].alignment = align_center
+        row_offset += 1
+        ws.append(details_headers)
+        for cell in ws[row_offset]:
+            cell.font = header_font
+            cell.fill = PatternFill(start_color="006400", end_color="006400", fill_type="solid")  # Verde oscuro
+            cell.border = border
+            cell.alignment = align_center
+        row_offset += 1
+
         for item in data:
-            row = [str(item.get(k, "")) for k in headers if k not in ["details_uuid", "details_total", "details_issuer_name"]]
             if "details" in item and item["details"]:
                 for detail in item["details"]:
-                    detail_row = row + [
+                    detail_row = [
                         str(detail.get("uuid", "")),
-                        str(detail.get("total", "")),
-                        str(detail.get("issuer_name", "")),
+                        f"${float(detail.get('total', 0)):.2f}",
+                        str(detail.get("issuer_name", ""))
                     ]
                     ws.append(detail_row)
-            else:
-                ws.append(row + ["", "", ""])
+                    for cell in ws[row_offset]:
+                        cell.font = data_font
+                        cell.fill = details_fill
+                        cell.border = border
+                        cell.alignment = align_center
+                    row_offset += 1
+        if row_offset == ws.max_row:
+            ws.append(["Sin datos", "", ""])
+            for cell in ws[row_offset]:
+                cell.font = data_font
+                cell.fill = details_fill
+                cell.border = border
+                cell.alignment = align_center
 
         # Ajustar ancho de columnas
+        col_widths = {"A": 40, "B": 15, "C": 40}  # UUID, Total, Nombre del Emisor
         for col in range(1, ws.max_column + 1):
+            column_letter = get_column_letter(col)
             max_length = 0
-            column = get_column_letter(col)
-            for cell in ws[column]:
+            for cell in ws[column_letter]:
                 try:
                     if len(str(cell.value)) > max_length:
                         max_length = len(str(cell.value))
                 except:
                     pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column].width = adjusted_width
+            adjusted_width = col_widths.get(column_letter, min(max_length + 2, 50))
+            ws.column_dimensions[column_letter].width = adjusted_width
 
     else:
-        ws.append(["No data available"])
-        ws['A' + str(ws.max_row)].font = Font(italic=True)
+        ws.append(["No hay datos disponibles"])
+        ws['A' + str(ws.max_row)].font = meta_font
+        ws['A' + str(ws.max_row)].alignment = align_center
 
     output = io.BytesIO()
     wb.save(output)
     output.seek(0)
     return output
 
-def format_stats_excel(data: list, filters: Optional[Dict] = None, operation: str = None) -> io.BytesIO:
+def format_stats_excel(data: list, filters: Optional[Dict] = None, operation: str = None, name: Optional[str] = None, description: Optional[str] = None) -> io.BytesIO:
     """Formatea datos de /api/v1/stats/basic para exportación a Excel."""
     wb = Workbook()
     ws = wb.active
-    ws.title = "Basic Stats Report"
+    ws.title = "Reporte de Estadísticas Básicas"
 
     # Estilos
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="4F81BD", end_color="4F81BD", fill_type="solid")
+    title_font = Font(bold=True, size=20, name='Helvetica')
+    body_font = Font(bold=True, size=12, name='Helvetica')
+    meta_font = Font(size=10, name='Helvetica')
+    header_font = Font(bold=True, size=10, color="FFFFFF", name='Helvetica')
+    data_font = Font(size=9, name='Helvetica')
+    header_fill = PatternFill(start_color="003087", end_color="003087", fill_type="solid")  # Azul oscuro
+    data_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # Gris claro
     border = Border(left=Side(style='thin'), right=Side(style='thin'), 
                     top=Side(style='thin'), bottom=Side(style='thin'))
-    align_center = Alignment(horizontal='center', vertical='center')
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
 
-    # Metadatos del reporte
-    ws.append(["Basic Statistics Report"])
+    # Título y metadatos
+    ws.append(["Reporte de Estadísticas Básicas"])
     ws.merge_cells('A1:D1')
-    ws['A1'].font = Font(bold=True, size=14)
+    ws['A1'].font = title_font
     ws['A1'].alignment = align_center
+    ws.append(["Generado", datetime.now(timezone.utc).strftime('%Y-%m-%d')])
+    ws['A2'].font = body_font
+    ws['B2'].font = body_font
+    if operation:
+        ws.append(["Operación", operation.capitalize()])
+        ws['A3'].font = body_font
+        ws['B3'].font = body_font
+    row_offset = 4 if operation else 3
     if filters:
-        ws.append(["Filters", json.dumps(filters, ensure_ascii=False)])
-        ws['A2'].font = Font(italic=True)
-    ws.append(["Generated", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")])
-    ws.append([])
+        exclude_keys = {"format", "save_report", "name", "description"}
+        used_filters = {k: v for k, v in filters.items() if v not in [None, "", [], {}] and k not in exclude_keys}
+        if used_filters:
+            ws.append(["Filtros", ""])
+            ws['A' + str(row_offset)].font = body_font
+            for key, value in used_filters.items():
+                pretty_value = json.dumps(value, ensure_ascii=False, indent=2) if isinstance(value, (dict, list)) else str(value)
+                ws.append([f"• {key}", pretty_value])
+                ws['A' + str(row_offset + 1)].font = meta_font
+                ws['B' + str(row_offset + 1)].font = meta_font
+                row_offset += 1
+    ws.append(["Nombre", name if name else "Sin nombre"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    row_offset += 1
+    ws.append(["Descripción", description if description else "Sin descripción"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    ws.append([])  # Espacio
+    row_offset += 2
 
     # Procesar datos
     if data:
-        headers = list(data[0].keys())
-        ws.append(headers)
-        for cell in ws[ws.max_row]:
+        stats_keys = ["range", "variance", "standard_deviation", "coefficient_of_variation"]
+        stats_headers_display = ["Rango", "Varianza", "Desviación Estándar", "Coeficiente de Variación"]
+        stats_row = [f"${float(data[0].get(k, 0)):.2f}" if k in ["range", "variance", "standard_deviation"] else f"{float(data[0].get(k, 0)):.2f}%" 
+                     for k in stats_keys]
+
+        ws.append(["Estadísticas Básicas"])
+        ws.merge_cells(start_row=row_offset, start_column=1, end_row=row_offset, end_column=len(stats_keys))
+        ws['A' + str(row_offset)].font = body_font
+        ws['A' + str(row_offset)].alignment = align_center
+        row_offset += 1
+        ws.append(stats_headers_display)
+        for cell in ws[row_offset]:
             cell.font = header_font
             cell.fill = header_fill
             cell.border = border
             cell.alignment = align_center
-
-        ws.append([str(item.get(k, "")) for k in headers])
+        row_offset += 1
+        ws.append(stats_row)
+        for cell in ws[row_offset]:
+            cell.font = data_font
+            cell.fill = data_fill
+            cell.border = border
+            cell.alignment = align_center
 
         # Ajustar ancho de columnas
-        for col in range(1, ws.max_column + 1):
-            max_length = 0
-            column = get_column_letter(col)
-            for cell in ws[column]:
-                try:
-                    if len(str(cell.value)) > max_length:
-                        max_length = len(str(cell.value))
-                except:
-                    pass
-            adjusted_width = min(max_length + 2, 50)
-            ws.column_dimensions[column].width = adjusted_width
+        for col in range(1, len(stats_keys) + 1):
+            column_letter = get_column_letter(col)
+            ws.column_dimensions[column_letter].width = 20
 
     else:
-        ws.append(["No data available"])
-        ws['A' + str(ws.max_row)].font = Font(italic=True)
+        ws.append(["No hay datos disponibles"])
+        ws['A' + str(ws.max_row)].font = meta_font
+        ws['A' + str(ws.max_row)].alignment = align_center
 
     output = io.BytesIO()
     wb.save(output)
