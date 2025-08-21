@@ -426,6 +426,108 @@ def format_aggregate_excel(data: list, filters: Optional[Dict] = None, operation
     output.seek(0)
     return output
 
+def format_central_tendency_excel(data: list, filters: Optional[Dict] = None, operation: str = None, name: Optional[str] = None, description: Optional[str] = None) -> io.BytesIO:
+    """Formatea datos de /api/v1/stats/central-tendency para exportación a Excel."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reporte de Tendencia Central"
+
+    # Estilos
+    title_font = Font(bold=True, size=20, name='Helvetica')
+    body_font = Font(bold=True, size=12, name='Helvetica')
+    meta_font = Font(size=10, name='Helvetica')
+    header_font = Font(bold=True, size=10, color="FFFFFF", name='Helvetica')
+    data_font = Font(size=9, name='Helvetica')
+    header_fill = PatternFill(start_color="003087", end_color="003087", fill_type="solid")  # Azul oscuro
+    data_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # Gris claro
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), 
+                    top=Side(style='thin'), bottom=Side(style='thin'))
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    # Título y metadatos
+    ws.append(["Reporte de Tendencia Central"])
+    ws.merge_cells('A1:C1')
+    ws['A1'].font = title_font
+    ws['A1'].alignment = align_center
+    ws.append(["Generado", datetime.now(timezone.utc).strftime('%Y-%m-%d')])
+    ws['A2'].font = body_font
+    ws['B2'].font = body_font
+    if operation:
+        ws.append(["Operación", operation.capitalize()])
+        ws['A3'].font = body_font
+        ws['B3'].font = body_font
+    row_offset = 4 if operation else 3
+    if filters:
+        exclude_keys = {"format", "save_report", "name", "description", "field"}
+        used_filters = {k: v for k, v in filters.items() if v not in [None, "", [], {}] and k not in exclude_keys}
+        if used_filters:
+            ws.append(["Filtros", ""])
+            ws['A' + str(row_offset)].font = body_font
+            for key, value in used_filters.items():
+                pretty_value = json.dumps(value, ensure_ascii=False, indent=2) if isinstance(value, (dict, list)) else str(value)
+                ws.append([f"• {key}", pretty_value])
+                ws['A' + str(row_offset + 1)].font = meta_font
+                ws['B' + str(row_offset + 1)].font = meta_font
+                row_offset += 1
+            ws.append([])
+            row_offset += 1
+    ws.append(["Nombre", name if name else "Sin nombre"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    row_offset += 1
+    ws.append(["Descripción", description if description else "Sin descripción"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    row_offset += 1
+    field_value = None
+    if filters and isinstance(filters, dict) and 'field' in filters:
+        field_value = filters['field']
+    ws.append(["Campo", field_value if field_value else "No especificado"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    ws.append([])  # Espacio
+    row_offset += 3
+
+    # Procesar datos
+    if data:
+        stats_keys = ["average", "median", "mode"]
+        stats_headers_display = ["Promedio", "Mediana", "Moda"]
+        stats_row = [f"${float(data[0].get(k, 0)):.2f}" for k in stats_keys]
+
+        ws.append(["Tendencia Central"])
+        ws.merge_cells(start_row=row_offset, start_column=1, end_row=row_offset, end_column=len(stats_keys))
+        ws['A' + str(row_offset)].font = body_font
+        ws['A' + str(row_offset)].alignment = align_center
+        row_offset += 1
+        ws.append(stats_headers_display)
+        for cell in ws[row_offset]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = align_center
+        row_offset += 1
+        ws.append(stats_row)
+        for cell in ws[row_offset]:
+            cell.font = data_font
+            cell.fill = data_fill
+            cell.border = border
+            cell.alignment = align_center
+
+        # Ajustar ancho de columnas
+        for col in range(1, len(stats_keys) + 1):
+            column_letter = get_column_letter(col)
+            ws.column_dimensions[column_letter].width = 20
+
+    else:
+        ws.append(["No hay datos disponibles"])
+        ws['A' + str(ws.max_row)].font = meta_font
+        ws['A' + str(ws.max_row)].alignment = align_center
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
 def format_aggregate_pdf(data: list, filters: Optional[Dict] = None, operation: str = None, name: Optional[str] = None, description: Optional[str] = None) -> io.BytesIO:
     """Formatea datos de /api/v1/aggregate para exportación a PDF."""
     output = io.BytesIO()
@@ -511,6 +613,64 @@ def format_aggregate_pdf(data: list, filters: Optional[Dict] = None, operation: 
         elif "details" in result:
             elements.append(Paragraph("Sin datos", styles['Normal']))
 
+    else:
+        elements.append(Paragraph("No hay datos disponibles", styles['Normal']))
+
+    doc.build(elements)
+    output.seek(0)
+    return output
+
+def format_central_tendency_pdf(data: list, filters: Optional[Dict] = None, operation: str = None, name: Optional[str] = None, description: Optional[str] = None, field: Optional[str] = None) -> io.BytesIO:
+    """Formatea datos de /api/v1/stats/central-tendency para exportación a PDF."""
+    output = io.BytesIO()
+    doc = SimpleDocTemplate(output, pagesize=letter, rightMargin=inch/2, leftMargin=inch/2, topMargin=inch, bottomMargin=inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', fontSize=20, leading=20, spaceAfter=20, alignment=1, fontName='Helvetica-Bold')
+    meta_style = ParagraphStyle(name='Meta', fontSize=10, leading=12, spaceAfter=10, fontName='Helvetica')
+    subtitle_style = ParagraphStyle(name='Subtitle', fontSize=12, leading=14, spaceAfter=8, fontName='Helvetica-Bold', alignment=1)
+    body_style = ParagraphStyle(name='Body', fontSize=12, leading=14, spaceAfter=9, fontName='Helvetica-Bold')
+
+    # Título y metadatos
+    elements.append(Paragraph("Reporte de Tendencia Central", title_style))
+    elements.append(Paragraph(f"Generado: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}", body_style))
+    if operation:
+        elements.append(Paragraph(f"Operación: {operation.capitalize()}", body_style))
+    if filters:
+        exclude_keys = {"format", "save_report", "name", "description", "field"}
+        used_filters = {k: v for k, v in filters.items() if v not in [None, "", [], {}] and k not in exclude_keys}
+        if used_filters:
+            elements.append(Paragraph("Filtros:", body_style))
+            for key, value in used_filters.items():
+                pretty_value = json.dumps(value, ensure_ascii=False, indent=2) if isinstance(value, (dict, list)) else str(value)
+                elements.append(Paragraph(f"&#8226; {key}: {pretty_value}", meta_style))
+    elements.append(Paragraph(f"Nombre: {name if name else 'Sin nombre'}", body_style))
+    elements.append(Paragraph(f"Descripción: {description if description else 'Sin descripción'}", body_style))
+    field_value = field if field else (filters.get('field') if filters and isinstance(filters, dict) and 'field' in filters else None)
+    elements.append(Paragraph(f"Campo: {field_value if field_value else 'No especificado'}", body_style))
+    elements.append(Spacer(1, 0.3 * inch))
+
+    if data:
+        stats_keys = ["average", "median", "mode"]
+        stats_headers_display = ["Promedio", "Mediana", "Moda"]
+        stats_row = [f"${float(data[0].get(k, 0)):.2f}" for k in stats_keys]
+
+        stats_table = Table([stats_headers_display, stats_row], colWidths=[2 * inch] * len(stats_keys))
+        stats_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('WORDWRAP', (0, 0), (-1, -1)),
+        ]))
+        elements.append(Paragraph("Tendencia Central", subtitle_style))
+        elements.append(stats_table)
     else:
         elements.append(Paragraph("No hay datos disponibles", styles['Normal']))
 
@@ -642,7 +802,6 @@ def format_stats_pdf(data: list, filters: Optional[Dict] = None, operation: str 
     elements.append(Spacer(1, 0.3 * inch))
 
     if data:
-        # Tabla de estadísticas
         stats_keys = ["range", "variance", "standard_deviation", "coefficient_of_variation"]
         stats_headers_display = ["Rango", "Varianza", "Desviación Estándar", "Coeficiente de Variación"]
         stats_row = [f"${float(data[0].get(k, 0)):.2f}" if k in ["range", "variance", "standard_deviation"] else f"{float(data[0].get(k, 0)):.2f}%" 
@@ -695,7 +854,7 @@ async def generate_report_from_data(
         name: Nombre del reporte (opcional).
         description: Descripción del reporte (opcional).
         filters: Filtros utilizados en la consulta (opcional).
-        operation: Operación ejecutada (e.g., visualize, basic_stats, aggregate).
+        operation: Operación ejecutada (e.g., visualize, basic_stats, aggregate, central_tendency).
 
     Returns:
         Dict: Contiene el contenido del reporte, tipo de contenido y ID del reporte (si se guarda).
@@ -743,6 +902,10 @@ async def generate_report_from_data(
         "aggregate": {
             "excel": format_aggregate_excel,
             "pdf": format_aggregate_pdf
+        },
+        "central_tendency": {
+            "excel": format_central_tendency_excel,
+            "pdf": format_central_tendency_pdf
         }
     }
 

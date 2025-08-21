@@ -46,6 +46,7 @@ async def central_tendency(
             filters_dict["start_date"] = filters_dict["start_date"].isoformat()
         if filters_dict.get("end_date"):
             filters_dict["end_date"] = filters_dict["end_date"].isoformat()
+        filters_dict["field"] = field
 
         # Generar el reporte
         report_result = await generate_report_from_data(
