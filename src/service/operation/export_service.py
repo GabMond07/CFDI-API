@@ -77,6 +77,8 @@ def format_visualize_excel(data: list, filters: Optional[Dict] = None, operation
                 ws['A' + str(row_offset + 1)].font = meta_font
                 ws['B' + str(row_offset + 1)].font = meta_font
                 row_offset += 1
+            ws.append([])
+            row_offset += 1
     ws.append(["Nombre", name if name else "Sin nombre"])
     ws['A' + str(row_offset)].font = body_font
     ws['B' + str(row_offset)].font = body_font
@@ -225,6 +227,8 @@ def format_stats_excel(data: list, filters: Optional[Dict] = None, operation: st
                 ws['A' + str(row_offset + 1)].font = meta_font
                 ws['B' + str(row_offset + 1)].font = meta_font
                 row_offset += 1
+            ws.append(["", ""])
+            row_offset += 1
     ws.append(["Nombre", name if name else "Sin nombre"])
     ws['A' + str(row_offset)].font = body_font
     ws['B' + str(row_offset)].font = body_font
