@@ -227,7 +227,7 @@ def format_stats_excel(data: list, filters: Optional[Dict] = None, operation: st
                 ws['A' + str(row_offset + 1)].font = meta_font
                 ws['B' + str(row_offset + 1)].font = meta_font
                 row_offset += 1
-            ws.append(["", ""])
+            ws.append([])
             row_offset += 1
     ws.append(["Nombre", name if name else "Sin nombre"])
     ws['A' + str(row_offset)].font = body_font
@@ -277,6 +277,244 @@ def format_stats_excel(data: list, filters: Optional[Dict] = None, operation: st
 
     output = io.BytesIO()
     wb.save(output)
+    output.seek(0)
+    return output
+
+def format_aggregate_excel(data: list, filters: Optional[Dict] = None, operation: str = None, name: Optional[str] = None, description: Optional[str] = None) -> io.BytesIO:
+    """Formatea datos de /api/v1/aggregate para exportación a Excel."""
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Reporte de Agregación"
+
+    # Estilos
+    title_font = Font(bold=True, size=20, name='Helvetica')
+    body_font = Font(bold=True, size=12, name='Helvetica')
+    meta_font = Font(size=10, name='Helvetica')
+    header_font = Font(bold=True, size=10, color="FFFFFF", name='Helvetica')
+    data_font = Font(size=9, name='Helvetica')
+    header_fill = PatternFill(start_color="003087", end_color="003087", fill_type="solid")  # Azul oscuro
+    data_fill = PatternFill(start_color="D3D3D3", end_color="D3D3D3", fill_type="solid")  # Gris claro
+    details_fill = PatternFill(start_color="F5F5DC", end_color="F5F5DC", fill_type="solid")  # Beige
+    border = Border(left=Side(style='thin'), right=Side(style='thin'), 
+                    top=Side(style='thin'), bottom=Side(style='thin'))
+    align_center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+
+    # Título y metadatos
+    ws.append(["Reporte de Agregación"])
+    ws.merge_cells('A1:D1')
+    ws['A1'].font = title_font
+    ws['A1'].alignment = align_center
+    ws.append(["Generado", datetime.now(timezone.utc).strftime('%Y-%m-%d')])
+    ws['A2'].font = body_font
+    ws['B2'].font = body_font
+    if operation:
+        ws.append(["Operación", operation.capitalize()])
+        ws['A3'].font = body_font
+        ws['B3'].font = body_font
+    row_offset = 4 if operation else 3
+    if filters:
+        exclude_keys = {"format", "save_report", "name", "description"}
+        used_filters = {k: v for k, v in filters.items() if v not in [None, "", [], {}] and k not in exclude_keys}
+        if used_filters:
+            ws.append(["Filtros", ""])
+            ws['A' + str(row_offset)].font = body_font
+            for key, value in used_filters.items():
+                pretty_value = json.dumps(value, ensure_ascii=False, indent=2) if isinstance(value, (dict, list)) else str(value)
+                ws.append([f"• {key}", pretty_value])
+                ws['A' + str(row_offset + 1)].font = meta_font
+                ws['B' + str(row_offset + 1)].font = meta_font
+                row_offset += 1
+            ws.append([])
+            row_offset += 1
+    ws.append(["Nombre", name if name else "Sin nombre"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    row_offset += 1
+    ws.append(["Descripción", description if description else "Sin descripción"])
+    ws['A' + str(row_offset)].font = body_font
+    ws['B' + str(row_offset)].font = body_font
+    ws.append([])  # Espacio
+    row_offset += 2
+
+    # Procesar datos
+    if data and "result" in data[0]:
+        result = data[0]["result"]
+        # Tabla de agregación
+        meta_keys = ["page", "page_size", "total_pages"]
+        agg_keys = [k for k in result.keys() if k not in meta_keys + ["details"]]
+        meta_agg_headers = meta_keys + agg_keys
+        meta_agg_headers_display = ["Página", "Tamaño de Página", "Total de Páginas"] + \
+                                  [k.replace("_", " ").title() for k in agg_keys]
+        meta_agg_row = [str(result.get(k, "")) if k not in agg_keys else f"{float(result.get(k, 0)):.2f}" for k in meta_agg_headers]
+
+        ws.append(["Agregación"])
+        ws.merge_cells(start_row=row_offset, start_column=1, end_row=row_offset, end_column=len(meta_agg_headers))
+        ws['A' + str(row_offset)].font = body_font
+        ws['A' + str(row_offset)].alignment = align_center
+        row_offset += 1
+        ws.append(meta_agg_headers_display)
+        for cell in ws[row_offset]:
+            cell.font = header_font
+            cell.fill = header_fill
+            cell.border = border
+            cell.alignment = align_center
+        row_offset += 1
+        ws.append(meta_agg_row)
+        for cell in ws[row_offset]:
+            cell.font = data_font
+            cell.fill = data_fill
+            cell.border = border
+            cell.alignment = align_center
+        row_offset += 2
+
+        # Tabla de detalles (si está presente)
+        if "details" in result and result["details"]:
+            details_headers = ["UUID", agg_keys[0].title()]
+            ws.append(["Detalles"])
+            ws.merge_cells(start_row=row_offset, start_column=1, end_row=row_offset, end_column=len(details_headers))
+            ws['A' + str(row_offset)].font = body_font
+            ws['A' + str(row_offset)].alignment = align_center
+            row_offset += 1
+            ws.append(details_headers)
+            for cell in ws[row_offset]:
+                cell.font = header_font
+                cell.fill = PatternFill(start_color="006400", end_color="006400", fill_type="solid")  # Verde oscuro
+                cell.border = border
+                cell.alignment = align_center
+            row_offset += 1
+
+            for detail in result["details"]:
+                detail_row = [
+                    str(detail.get("uuid", "")),
+                    f"${float(detail.get(agg_keys[0], 0)):.2f}"
+                ]
+                ws.append(detail_row)
+                for cell in ws[row_offset]:
+                    cell.font = data_font
+                    cell.fill = details_fill
+                    cell.border = border
+                    cell.alignment = align_center
+                row_offset += 1
+        elif "details" in result:
+            ws.append(["Sin datos"])
+            ws['A' + str(row_offset)].font = data_font
+            ws['A' + str(row_offset)].fill = details_fill
+            ws['A' + str(row_offset)].border = border
+            ws['A' + str(row_offset)].alignment = align_center
+
+    else:
+        ws.append(["No hay datos disponibles"])
+        ws['A' + str(ws.max_row)].font = meta_font
+        ws['A' + str(ws.max_row)].alignment = align_center
+
+    # Ajustar ancho de columnas
+    col_widths = {"A": 40, "B": 15}  # UUID, Valor agregado
+    for col in range(1, ws.max_column + 1):
+        column_letter = get_column_letter(col)
+        max_length = 0
+        for cell in ws[column_letter]:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = col_widths.get(column_letter, min(max_length + 2, 50))
+        ws.column_dimensions[column_letter].width = adjusted_width
+
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+    return output
+
+def format_aggregate_pdf(data: list, filters: Optional[Dict] = None, operation: str = None, name: Optional[str] = None, description: Optional[str] = None) -> io.BytesIO:
+    """Formatea datos de /api/v1/aggregate para exportación a PDF."""
+    output = io.BytesIO()
+    doc = SimpleDocTemplate(output, pagesize=letter, rightMargin=inch/2, leftMargin=inch/2, topMargin=inch, bottomMargin=inch)
+    elements = []
+    styles = getSampleStyleSheet()
+    title_style = ParagraphStyle(name='Title', fontSize=20, leading=20, spaceAfter=20, alignment=1, fontName='Helvetica-Bold')
+    meta_style = ParagraphStyle(name='Meta', fontSize=10, leading=12, spaceAfter=10, fontName='Helvetica')
+    subtitle_style = ParagraphStyle(name='Subtitle', fontSize=12, leading=14, spaceAfter=8, fontName='Helvetica-Bold', alignment=1)
+    body_style = ParagraphStyle(name='Body', fontSize=12, leading=14, spaceAfter=9, fontName='Helvetica-Bold')
+
+    # Título y metadatos
+    elements.append(Paragraph("Reporte de Agregación", title_style))
+    elements.append(Paragraph(f"Generado: {datetime.now(timezone.utc).strftime('%Y-%m-%d')}", body_style))
+    if operation:
+        elements.append(Paragraph(f"Operación: {operation.capitalize()}", body_style))
+    if filters:
+        exclude_keys = {"format", "save_report", "name", "description"}
+        used_filters = {k: v for k, v in filters.items() if v not in [None, "", [], {}] and k not in exclude_keys}
+        if used_filters:
+            elements.append(Paragraph("Filtros:", body_style))
+            for key, value in used_filters.items():
+                pretty_value = json.dumps(value, ensure_ascii=False, indent=2) if isinstance(value, (dict, list)) else str(value)
+                elements.append(Paragraph(f"&#8226; {key}: {pretty_value}", meta_style))
+    elements.append(Paragraph(f"Nombre: {name if name else 'Sin nombre'}", body_style))
+    elements.append(Paragraph(f"Descripción: {description if description else 'Sin descripción'}", body_style))
+    elements.append(Spacer(1, 0.3 * inch))
+
+    if data and "result" in data[0]:
+        result = data[0]["result"]
+        # Tabla de agregación
+        meta_keys = ["page", "page_size", "total_pages"]
+        agg_keys = [k for k in result.keys() if k not in meta_keys + ["details"]]
+        meta_agg_headers = meta_keys + agg_keys
+        meta_agg_headers_display = ["Página", "Tamaño de Página", "Total de Páginas"] + \
+                                  [k.replace("_", " ").title() for k in agg_keys]
+        meta_agg_row = [str(result.get(k, "")) if k not in agg_keys else f"{float(result.get(k, 0)):.2f}" for k in meta_agg_headers]
+
+        meta_agg_table = Table([meta_agg_headers_display, meta_agg_row], 
+                              colWidths=[1.5 * inch if k in meta_keys else 2 * inch for k in meta_agg_headers])
+        meta_agg_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.darkblue),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 10),
+            ('FONTSIZE', (0, 1), (-1, -1), 9),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.lightgrey),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('WORDWRAP', (0, 0), (-1, -1)),
+        ]))
+        elements.append(Paragraph("Agregación", subtitle_style))
+        elements.append(meta_agg_table)
+        elements.append(Spacer(1, 0.3 * inch))
+
+        # Tabla de detalles (si está presente)
+        if "details" in result and result["details"]:
+            details_headers = ["UUID", agg_keys[0].title()]
+            details_table_data = [details_headers]
+            for detail in result["details"]:
+                details_table_data.append([
+                    str(detail.get("uuid", "")),
+                    f"${float(detail.get(agg_keys[0], 0)):.2f}"
+                ])
+            details_table = Table(details_table_data, colWidths=[3 * inch, 3 * inch])
+            details_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, 0), colors.darkgreen),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('FONTSIZE', (0, 0), (-1, 0), 10),
+                ('FONTSIZE', (0, 1), (-1, -1), 9),
+                ('BOTTOMPADDING', (0, 0), (-1, 0), 8),
+                ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+                ('GRID', (0, 0), (-1, -1), 1, colors.black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('WORDWRAP', (0, 0), (-1, -1)),
+            ]))
+            elements.append(Paragraph("Detalles", subtitle_style))
+            elements.append(details_table)
+        elif "details" in result:
+            elements.append(Paragraph("Sin datos", styles['Normal']))
+
+    else:
+        elements.append(Paragraph("No hay datos disponibles", styles['Normal']))
+
+    doc.build(elements)
     output.seek(0)
     return output
 
@@ -457,7 +695,7 @@ async def generate_report_from_data(
         name: Nombre del reporte (opcional).
         description: Descripción del reporte (opcional).
         filters: Filtros utilizados en la consulta (opcional).
-        operation: Operación ejecutada (e.g., visualize, basic_stats).
+        operation: Operación ejecutada (e.g., visualize, basic_stats, aggregate).
 
     Returns:
         Dict: Contiene el contenido del reporte, tipo de contenido y ID del reporte (si se guarda).
@@ -501,6 +739,10 @@ async def generate_report_from_data(
         "basic_stats": {
             "excel": format_stats_excel,
             "pdf": format_stats_pdf
+        },
+        "aggregate": {
+            "excel": format_aggregate_excel,
+            "pdf": format_aggregate_pdf
         }
     }
 
