@@ -56,157 +56,115 @@ class JoinService:
         predefined_joins = [
             {
                 "id": 1,
-                "name": "cfdi_with_issuer",
+                "name": "CFDI con información del emisor",
                 "description": "CFDI con información del emisor",
                 "tables": ["CFDI", "Issuer"],
                 "join_type": "inner"
             },
             {
                 "id": 2,
-                "name": "cfdi_with_receiver",
+                "name": "CFDI con información del receptor",
                 "description": "CFDI con información del receptor",
                 "tables": ["CFDI", "Receiver"],
                 "join_type": "left"
             },
             {
                 "id": 3,
-                "name": "cfdi_full",
+                "name": "CFDI con emisor y receptor",
                 "description": "CFDI con emisor y receptor",
                 "tables": ["CFDI", "Issuer", "Receiver"],
                 "join_type": "inner_left"
             },
             {
                 "id": 4,
-                "name": "cfdi_with_concepts",
+                "name": "CFDI con sus conceptos",
                 "description": "CFDI con sus conceptos",
                 "tables": ["CFDI", "Concept"],
                 "join_type": "inner"
             },
             {
                 "id": 5,
-                "name": "cfdi_with_concepts_taxes",
+                "name": "CFDI con conceptos e impuestos",
                 "description": "CFDI con conceptos y taxes",
                 "tables": ["CFDI", "Concept", "Taxes"],
                 "join_type": "inner"
             },
             {
                 "id": 6,
-                "name": "cfdi_tax_summary",
+                "name": "Resumen de impuestos por CFDI",
                 "description": "Resumen de impuestos por CFDI",
                 "tables": ["CFDI", "Concept", "Taxes"],
                 "join_type": "inner"
             },
             {
                 "id": 7,
-                "name": "user_reports",
+                "name": "Reportes guardados",
                 "description": "Reportes del usuario",
                 "tables": ["Report", "CFDI"],
                 "join_type": "left"
             },
             {
                 "id": 8,
-                "name": "user_visualizations",
-                "description": "Visualizaciones del usuario",
-                "tables": ["Visualization", "CFDI"],
-                "join_type": "left"
-            },
-            {
-                "id": 9,
-                "name": "user_notifications",
-                "description": "Notificaciones del usuario",
-                "tables": ["Notification", "CFDI"],
-                "join_type": "left"
-            },
-            {
-                "id": 10,
-                "name": "cfdi_with_payment_complements",
+                "name": "CFDI con complementos de pago",
                 "description": "CFDI con complementos de pago",
                 "tables": ["CFDI", "PaymentComplement"],
                 "join_type": "inner"
             },
             {
-                "id": 11,
-                "name": "cfdi_with_attachments",
-                "description": "CFDI con adjuntos (sin contenido de archivo)",
-                "tables": ["CFDI", "CFDIAttachment"],
-                "join_type": "inner"
-            },
-            {
-                "id": 12,
-                "name": "cfdi_with_relations",
+                "id": 9,
+                "name": "CFDI con sus relaciones",
                 "description": "CFDI con sus relaciones",
                 "tables": ["CFDI", "CFDIRelation"],
                 "join_type": "inner"
             },
             {
-                "id": 13,
-                "name": "cfdi_monthly_summary",
+                "id": 10,
+                "name": "CFDI con resumen mensual",
                 "description": "Resumen mensual de CFDI",
                 "tables": ["CFDI"],
                 "join_type": "none"
             },
             {
-                "id": 14,
-                "name": "cfdi_by_issuer",
+                "id": 11,
+                "name": "Resumen de CFDI por emisor",
                 "description": "Resumen por emisor",
                 "tables": ["CFDI", "Issuer"],
                 "join_type": "inner"
             },
             {
-                "id": 15,
-                "name": "cfdi_by_type",
+                "id": 12,
+                "name": "Resumen de CFDI por tipo de CFDI",
                 "description": "Resumen por tipo de CFDI",
                 "tables": ["CFDI"],
                 "join_type": "none"
             },
             {
-                "id": 16,
-                "name": "user_info",
-                "description": "Información del usuario con rol y tenant",
-                "tables": ["User", "Roles", "Tenant"],
-                "join_type": "inner_left"
-            },
-            {
-                "id": 17,
-                "name": "user_batch_jobs",
-                "description": "Jobs del usuario",
-                "tables": ["BatchJob"],
-                "join_type": "none"
-            },
-            {
-                "id": 18,
-                "name": "cfdi_complete",
+                "id": 13,
+                "name": "CFDI con toda la información relacionada",
                 "description": "Vista completa de CFDI con toda la información relacionada",
                 "tables": ["CFDI", "Issuer", "Receiver", "Concept", "CFDIAttachment", "PaymentComplement"],
                 "join_type": "inner_left"
             },
             {
-                "id": 19,
-                "name": "cfdi_by_receiver",
+                "id": 14,
+                "name": "Resumen de CFDI por receptor",
                 "description": "Resumen por receptor",
                 "tables": ["CFDI", "Receiver"],
                 "join_type": "inner"
             },
             {
-                "id": 20,
-                "name": "cfdi_with_concepts_relations",
+                "id": 15,
+                "name": "CFDI con conceptos y relaciones",
                 "description": "CFDI con conceptos y relaciones",
                 "tables": ["CFDI", "Concept", "CFDIRelation"],
                 "join_type": "inner"
             },
             {
-                "id": 21,
-                "name": "payment_complement_monthly",
+                "id": 16,
+                "name": "Resumen mensual de complementos de pago",
                 "description": "Resumen mensual de complementos de pago",
                 "tables": ["CFDI", "PaymentComplement"],
                 "join_type": "inner"
-            },
-            {
-                "id": 22,
-                "name": "cfdi_with_cancellation_status",
-                "description": "CFDI con estado de cancelación",
-                "tables": ["CFDI", "Cancellation"],
-                "join_type": "left"
             }
         ]
         total_count = len(predefined_joins)
@@ -235,7 +193,12 @@ class JoinService:
         total_pages = 1
 
         # Validar que las fechas estén definidas para consultas de resumen
-        if join_def["name"] in ["cfdi_monthly_summary", "cfdi_by_issuer", "cfdi_by_type", "payment_complement_monthly"]:
+        if join_def["name"] in [
+            "CFDI con resumen mensual",
+            "Resumen de CFDI por emisor",
+            "Resumen de CFDI por tipo de CFDI",
+            "Resumen mensual de complementos de pago"
+        ]:
             if not filters or not filters.start_date or not filters.end_date:
                 raise HTTPException(status_code=400, detail="start_date and end_date are required for summary queries")
 
@@ -341,7 +304,7 @@ class JoinService:
                         "amount": concept.amount
                     })
 
-        # Consulta 5: CFDI con conceptos y taxes
+        # Consulta 5: CFDI con conceptos e impuestos
         elif join_def["id"] == 5:
             include["concepts"] = {"include": {"taxes": True}}
             total_count = await db.cfdi.count(where=where_conditions)
@@ -417,51 +380,8 @@ class JoinService:
                     "cfdi_total": report.cfdi.total if report.cfdi else None
                 })
 
-        # Consulta 8: Visualizaciones del usuario
+        # Consulta 8: CFDI con complementos de pago
         elif join_def["id"] == 8:
-            total_count = await db.visualization.count(where={"user_id": self.user_rfc})
-            visualizations = await db.visualization.find_many(
-                where={"user_id": self.user_rfc},
-                include={"cfdi": True},
-                take=page_size,
-                skip=(page - 1) * page_size,
-                order={"created_at": "desc"}
-            )
-            for vis in visualizations:
-                result.append({
-                    "id": vis.id,
-                    "type": vis.type,
-                    "config": vis.config,
-                    "created_at": vis.created_at.isoformat() if vis.created_at else None,
-                    "cfdi_uuid": vis.cfdi.uuid if vis.cfdi else None,
-                    "cfdi_serie": vis.cfdi.serie if vis.cfdi else None,
-                    "cfdi_folio": vis.cfdi.folio if vis.cfdi else None
-                })
-
-        # Consulta 9: Notificaciones del usuario
-        elif join_def["id"] == 9:
-            total_count = await db.notification.count(where={"user_id": self.user_rfc})
-            notifications = await db.notification.find_many(
-                where={"user_id": self.user_rfc},
-                include={"cfdi": True},
-                take=page_size,
-                skip=(page - 1) * page_size,
-                order={"created_at": "desc"}
-            )
-            for notif in notifications:
-                result.append({
-                    "id": notif.id,
-                    "type": notif.type,
-                    "status": notif.status,
-                    "created_at": notif.created_at.isoformat() if notif.created_at else None,
-                    "sent_at": notif.sent_at.isoformat() if notif.sent_at else None,
-                    "cfdi_uuid": notif.cfdi.uuid if notif.cfdi else None,
-                    "cfdi_serie": notif.cfdi.serie if notif.cfdi else None,
-                    "cfdi_folio": notif.cfdi.folio if notif.cfdi else None
-                })
-
-        # Consulta 10: CFDI con complementos de pago
-        elif join_def["id"] == 10:
             total_count = await db.cfdi.count(where=where_conditions)
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
@@ -483,30 +403,8 @@ class JoinService:
                         "payment_amount": pc.payment_amount
                     })
 
-        # Consulta 11: CFDI con adjuntos
-        elif join_def["id"] == 11:
-            total_count = await db.cfdi.count(where=where_conditions)
-            cfdis = await db.cfdi.find_many(
-                where=where_conditions,
-                include={"attachments": True},
-                take=page_size,
-                skip=(page - 1) * page_size,
-                order={"issue_date": "desc"}
-            )
-            for cfdi in cfdis:
-                for attachment in cfdi.attachments:
-                    result.append({
-                        "id": cfdi.id,
-                        "uuid": cfdi.uuid,
-                        "serie": cfdi.serie,
-                        "folio": cfdi.folio,
-                        "attachment_id": attachment.id,
-                        "file_type": attachment.file_type,
-                        "created_at": attachment.created_at.isoformat() if attachment.created_at else None
-                    })
-
-        # Consulta 12: CFDI con relaciones
-        elif join_def["id"] == 12:
+        # Consulta 9: CFDI con sus relaciones
+        elif join_def["id"] == 9:
             total_count = await db.cfdi.count(where=where_conditions)
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
@@ -526,8 +424,8 @@ class JoinService:
                         "relation_type": relation.relation_type
                     })
 
-        # Consulta 13: Resumen mensual de CFDI
-        elif join_def["id"] == 13:
+        # Consulta 10: CFDI con resumen mensual
+        elif join_def["id"] == 10:
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
                 take=page_size,
@@ -553,8 +451,8 @@ class JoinService:
             total_count = len(monthly_summary)
             result.sort(key=lambda x: x["month"], reverse=True)
 
-        # Consulta 14: Resumen por emisor
-        elif join_def["id"] == 14:
+        # Consulta 11: Resumen de CFDI por emisor
+        elif join_def["id"] == 11:
             include["issuer"] = True
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
@@ -578,8 +476,8 @@ class JoinService:
             result = list(issuer_summary.values())
             total_count = len(issuer_summary)
 
-        # Consulta 15: Resumen por tipo de CFDI
-        elif join_def["id"] == 15:
+        # Consulta 12: Resumen de CFDI por tipo de CFDI
+        elif join_def["id"] == 12:
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
                 take=page_size,
@@ -596,44 +494,8 @@ class JoinService:
             result = list(type_summary.values())
             total_count = len(type_summary)
 
-        # Consulta 16: Información del usuario con rol y tenant
-        elif join_def["id"] == 16:
-            total_count = await db.user.count(where={"rfc": self.user_rfc})
-            users = await db.user.find_many(
-                where={"rfc": self.user_rfc},
-                include={"role": True, "tenant": True},
-                take=page_size,
-                skip=(page - 1) * page_size
-            )
-            for user in users:
-                result.append({
-                    "rfc": user.rfc,
-                    "username": user.username,
-                    "email": user.email,
-                    "created_at": user.created_at.isoformat() if user.created_at else None,
-                    "role": user.role.role if user.role else None,
-                    "tenant_name": user.tenant.name if user.tenant else None
-                })
-
-        # Consulta 17: Jobs del usuario
-        elif join_def["id"] == 17:
-            total_count = await db.batchjob.count(where={"user_id": self.user_rfc})
-            jobs = await db.batchjob.find_many(
-                where={"user_id": self.user_rfc},
-                take=page_size,
-                skip=(page - 1) * page_size,
-                order={"created_at": "desc"}
-            )
-            for job in jobs:
-                result.append({
-                    "id": job.id,
-                    "status": job.status,
-                    "result_count": job.result_count,
-                    "created_at": job.created_at.isoformat() if job.created_at else None
-                })
-
-        # Consulta 18: Vista completa de CFDI
-        elif join_def["id"] == 18:
+        # Consulta 13: CFDI con toda la información relacionada
+        elif join_def["id"] == 13:
             include = {
                 "issuer": True,
                 "receiver": True,
@@ -667,8 +529,8 @@ class JoinService:
                     "payment_complement_count": len(cfdi.payment_complements)
                 })
 
-        # Consulta 19: Resumen por receptor
-        elif join_def["id"] == 19:
+        # Consulta 14: Resumen de CFDI por receptor
+        elif join_def["id"] == 14:
             include["receiver"] = True
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
@@ -692,8 +554,8 @@ class JoinService:
             result = list(receiver_summary.values())
             total_count = len(receiver_summary)
 
-        # Consulta 20: CFDI con conceptos y relaciones
-        elif join_def["id"] == 20:
+        # Consulta 15: CFDI con conceptos y relaciones
+        elif join_def["id"] == 15:
             include["concepts"] = True
             include["relations"] = True
             total_count = await db.cfdi.count(where=where_conditions)
@@ -720,8 +582,8 @@ class JoinService:
                             "relation_type": relation.relation_type
                         })
 
-        # Consulta 21: Resumen mensual de complementos de pago
-        elif join_def["id"] == 21:
+        # Consulta 16: Resumen mensual de complementos de pago
+        elif join_def["id"] == 16:
             cfdis = await db.cfdi.find_many(
                 where=where_conditions,
                 include={"payment_complements": True},
@@ -746,28 +608,6 @@ class JoinService:
                 })
             total_count = len(monthly_summary)
             result.sort(key=lambda x: x["month"], reverse=True)
-
-        # Consulta 22: CFDI con estado de cancelación
-        elif join_def["id"] == 22:
-            include["cancellation"] = True
-            total_count = await db.cfdi.count(where=where_conditions)
-            cfdis = await db.cfdi.find_many(
-                where=where_conditions,
-                include=include,
-                take=page_size,
-                skip=(page - 1) * page_size,
-                order={"issue_date": "desc"}
-            )
-            for cfdi in cfdis:
-                result.append({
-                    "id": cfdi.id,
-                    "uuid": cfdi.uuid,
-                    "serie": cfdi.serie,
-                    "folio": cfdi.folio,
-                    "total": cfdi.total,
-                    "cancellation_status": cfdi.cancellation.status if cfdi.cancellation else "active",
-                    "cancellation_date": cfdi.cancellation.cancellation_date.isoformat() if cfdi.cancellation and cfdi.cancellation.cancellation_date else None
-                })
 
         total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
 

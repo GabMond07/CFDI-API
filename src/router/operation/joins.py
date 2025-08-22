@@ -1,12 +1,13 @@
 from fastapi import APIRouter, Request, Query, Depends, Response, HTTPException, BackgroundTasks
 from src.service.operation.join_service import JoinService
 from src.Models.operation.common import CFDIFilter
-from src.service.operation.export_service import generate_report_from_data
+from src.service.operation.export_join_service import generate_report_from_data
 # from src.service.notification_service import NotificationService
 from src.permission import require_permissions
 from datetime import datetime, timezone
 from src.database import db
 import logging
+import base64
 
 router = APIRouter(tags=["Data processing and transformation"])
 logging.basicConfig(level=logging.INFO)
@@ -15,7 +16,7 @@ logger = logging.getLogger(__name__)
 @router.post("/join/predefined", dependencies=[Depends(require_permissions(["join:execute"]))])
 async def predefined_join(
     request: Request,
-    join_id: int = Query(..., description="ID de la consulta predefinida"),
+    join_id: int = Query(..., description="ID de la consulta predefinida (1-16)"),
     filters: CFDIFilter = Depends(),
     page: int = Query(1, ge=1, description="Número de página (comienza en 1)"),
     page_size: int = Query(100, ge=1, le=1000, description="Número de registros por página"),
@@ -30,6 +31,10 @@ async def predefined_join(
     start_time = datetime.now(timezone.utc)
     user_rfc = request.state.user["sub"]
     logger.info(f"Received request for /join/predefined: join_id={join_id}, filters={filters}, page={page}, page_size={page_size}")
+
+    # Validar join_id
+    if join_id < 1 or join_id > 16:
+        raise HTTPException(status_code=400, detail="Invalid join_id. Must be between 1 and 16.")
 
     # Validar parámetros de paginación
     if page_size == 0:
@@ -58,6 +63,9 @@ async def predefined_join(
                 logger.warning(f"Folio {filters.folio} no encontrado para RFC {user_rfc}")
                 raise HTTPException(status_code=404, detail=f"Folio {filters.folio} not found")
 
+        # Obtener el nombre de la consulta predefinida
+        join_name = service.get_predefined_joins(page=1, page_size=1000)["joins"][join_id-1]["name"]
+
         # Generar el reporte
         report_result = await generate_report_from_data(
             data=[result["content"]] if isinstance(result["content"], dict) else result["content"],
@@ -68,7 +76,11 @@ async def predefined_join(
             name=filters.name,
             description=filters.description,
             filters=filters_dict,
-            operation="predefined_join"
+            operation="predefined_join",
+            join_name=join_name,
+            page=result["page"],
+            page_size=result["page_size"],
+            total_pages=result["total_pages"]
         )
 
         # Enviar notificación via webhook si se guarda el reporte (RF12)
@@ -84,17 +96,30 @@ async def predefined_join(
             f"Join predefinido {join_id} generado para RFC: {user_rfc} en formato {filters.format}, "
             f"guardado: {filters.save_report}, nombre: {filters.name}, "
             f"descripción: {filters.description}, operación: predefined_join, "
+            f"consulta: {join_name}, "
             f"en {(datetime.now(timezone.utc) - start_time).total_seconds():.2f} segundos"
         )
 
-        return {
-            "content": report_result["content"],
-            "content_type": report_result["content_type"],
-            "report_id": report_result["report_id"],
-            "page": result["page"],
-            "page_size": result["page_size"],
-            "total_pages": result["total_pages"]
-        }
+        # Manejar respuesta según el formato
+        if filters.format.lower() in ["excel", "pdf"]:
+            # Decodificar Base64 a binario
+            content = base64.b64decode(report_result["content"])
+            return Response(
+                content=content,
+                media_type=report_result["content_type"],
+                headers={
+                    "Content-Disposition": f"attachment; filename=report_{join_name.replace(' ', '_').lower()}_{datetime.now(timezone.utc).strftime('%Y%m%d')}.{filters.format.lower()}"
+                }
+            )
+        else:
+            return {
+                "content": report_result["content"],
+                "content_type": report_result["content_type"],
+                "report_id": report_result["report_id"],
+                "page": result["page"],
+                "page_size": result["page_size"],
+                "total_pages": result["total_pages"]
+            }
 
     except HTTPException as he:
         raise he
