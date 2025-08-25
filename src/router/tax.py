@@ -3,7 +3,7 @@ from src.Models.filtro_tax import FiltroTax
 from src.service.tax_service import consultar_taxes
 from src.auth import get_current_user
 
-router = APIRouter()
+router = APIRouter(tags=["Data Query and Filtering"])
 
 @router.get("/impuestos")
 async def listar_impuestos(

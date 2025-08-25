@@ -27,29 +27,29 @@ model Tenant {
 }
 
 model User {
-    rfc             String          @id @db.VarChar(13)
-    hashed_password String          @db.VarChar(255)
+    rfc             String         @id @db.VarChar(13)
+    hashed_password String         @db.VarChar(255)
     role_id         Int
-    tenant_id       String?         @db.VarChar(50)
-    created_at      DateTime        @default(now()) @db.Timestamptz(6)
-    email           String?         @db.VarChar(150)
-    username        String?         @db.VarChar(100)
-    tenant          Tenant?         @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    tenant_id       String?        @db.VarChar(50)
+    created_at      DateTime       @default(now()) @db.Timestamptz(6)
+    email           String?        @db.VarChar(150)
+    username        String?        @db.VarChar(100)
+    webhook_url     String?        @db.VarChar(255)
+    tenant          Tenant?        @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
     audit_logs      AuditLog[]
     tokens          AuthToken[]
     batch_jobs      BatchJob[]
     cfdis           CFDI[]
     notifications   Notification[]
     reports         Report[]
-    role            Roles           @relation(fields: [role_id], references: [id])
-    visualizations  Visualization[]
+    role            Roles          @relation(fields: [role_id], references: [id])
     api_keys        ApiKey[]
     refresh_tokens  RefreshToken[]
 }
 
 model AuthToken {
     id         BigInt    @id @default(autoincrement())
-    token      String    @unique @db.VarChar(255)
+    token      String    @unique @db.VarChar(512)
     expires_at DateTime  @db.Timestamptz(6)
     created_at DateTime  @default(now()) @db.Timestamptz(6)
     revoked_at DateTime?
@@ -92,28 +92,15 @@ model CFDI {
     issuer              Issuer              @relation(fields: [issuer_id], references: [rfc_issuer])
     receiver            Receiver?           @relation(fields: [receiver_id], references: [id])
     user                User                @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
-    attachments         CFDIAttachment[]
     related_cfdis       CFDIRelation[]
     concepts            Concept[]
     notifications       Notification[]
     payment_complements PaymentComplement[]
     reports             Report[]
-    visualizations      Visualization[]
 
     @@index([user_id])
     @@index([issue_date])
     @@index([receiver_id])
-}
-
-model CFDIAttachment {
-    id           BigInt   @id @default(autoincrement())
-    cfdi_id      BigInt
-    file_type    String   @db.VarChar(10)
-    file_content String
-    created_at   DateTime @default(now()) @db.Timestamptz(6)
-    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
-
-    @@index([cfdi_id])
 }
 
 model Concept {
@@ -155,30 +142,20 @@ model CFDIRelation {
 
 model Report {
     id           BigInt   @id @default(autoincrement())
-    cfdi_id      BigInt
+    cfdi_id      BigInt?
     format       String   @db.VarChar(10)
     file_content String
     created_at   DateTime @default(now()) @db.Timestamptz(6)
     user_id      String   @db.VarChar(13)
-    cfdi         CFDI     @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
+    name         String? // Nuevo: Nombre del reporte
+    description  String? // Nuevo: Descripción del reporte
+    filters      Json? // Nuevo: Filtros usados (como JSON)
+    operation    String? // Nuevo: Operación ejecutada (e.g., "visualize", "join")
+    cfdi         CFDI?    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
     user         User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
 
     @@index([cfdi_id])
     @@index([user_id])
-}
-
-model Visualization {
-    id         BigInt   @id @default(autoincrement())
-    user_id    String   @db.VarChar(13)
-    cfdi_id    BigInt?
-    type       String   @db.VarChar(20)
-    config     Json?
-    created_at DateTime @default(now()) @db.Timestamptz(6)
-    cfdi       CFDI?    @relation(fields: [cfdi_id], references: [id], onDelete: Cascade)
-    user       User     @relation(fields: [user_id], references: [rfc], onDelete: Cascade)
-
-    @@index([user_id])
-    @@index([cfdi_id])
 }
 
 model Notification {
@@ -262,7 +239,7 @@ model ApiKey {
 
 model RefreshToken {
     id         BigInt    @id @default(autoincrement())
-    token      String    @unique @db.VarChar(255)
+    token      String    @unique @db.VarChar(512)
     expires_at DateTime  @db.Timestamptz
     created_at DateTime  @default(now()) @db.Timestamptz
     revoked_at DateTime? @db.Timestamptz

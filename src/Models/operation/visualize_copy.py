@@ -27,6 +27,17 @@ class TableType(str, Enum):
     ISSUER = "issuer"
     RECEIVER = "receiver"
     CONCEPT = "concept"
+    TAXES = "taxes"
+    REPORT = "report"
+    VISUALIZATION = "visualization"
+    NOTIFICATION = "notification"
+    PAYMENT_COMPLEMENT = "payment_complement"
+    CFDI_ATTACHMENT = "cfdi_attachment"
+    CFDI_RELATION = "cfdi_relation"
+    USER = "user"
+    ROLES = "roles"
+    TENANT = "tenant"
+    BATCH_JOB = "batch_job"
 
 class CFDIType(str, Enum):
     """Tipos de CFDI válidos."""
@@ -54,6 +65,8 @@ class CFDIFilter(BaseModel):
     status: Optional[str] = Field(None, max_length=20, description="Estado del CFDI")
     format: str = Field("json", description="Formato de salida: json, xml, csv, excel")
     save_report: bool = Field(False, description="Indica si se debe guardar el reporte en la DB")
+    name: Optional[str] = Field(None, description="Nombre del reporte")
+    description: Optional[str] = Field(None, description="Descripción del reporte")
 
     @validator('end_date')
     def validate_date_range(cls, v, values):
@@ -69,8 +82,8 @@ class CFDIFilter(BaseModel):
 
     @validator('format')
     def validate_format(cls, v):
-        if v.lower() not in ["json", "xml", "csv", "excel"]:
-            raise ValueError("Format must be json, xml, csv, or excel")
+        if v.lower() not in ["json", "xml", "csv", "excel", "pdf"]:
+            raise ValueError("Format must be json, xml, csv, excel, or pdf")
         return v.lower()
 
 class DataSource(BaseModel):
@@ -133,11 +146,23 @@ class AggregationRequest(BaseModel):
     include_details: bool = False
 
 class JoinRequest(BaseModel):
-    sources: List[Literal["cfdi", "receiver", "issuer"]]
-    join_type: Literal["inner", "left"] = "inner"
-    on: Dict[str, str]
-    filters: Optional[CFDIFilter] = None
+    left_table: str = Field(..., description="Tabla izquierda para el join")
+    right_table: str = Field(..., description="Tabla derecha para el join")
+    join_type: str = Field(..., description="Tipo de join: inner, left, right, full")
+    on: Dict[str, str] = Field(..., description="Condiciones del join")
+    filters: Optional[CFDIFilter] = Field(None, description="Filtros para aplicar al join")
+    sources: List[TableType] = Field(..., description="Tablas involucradas en el join")
+    format: str = Field("json", description="Formato de salida: json, xml, csv, excel")
+    save_report: bool = Field(False, description="Indica si se debe guardar el reporte en la DB")
+    name: Optional[str] = Field(None, description="Nombre del reporte")
+    description: Optional[str] = Field(None, description="Descripción del reporte")
 
+    @validator('format')
+    def validate_format(cls, v):
+        if v.lower() not in ["json", "xml", "csv", "excel", "pdf"]:
+            raise ValueError("Format must be json, xml, csv, excel, or pdf")
+        return v.lower()
+        
 class StatsRequest(BaseModel):
     field: Literal["total", "subtotal"]
     filters: Optional[CFDIFilter] = None

@@ -3,7 +3,7 @@ from src.Models.filtro_concept import FiltroConcept
 from src.service.concept_service import consultar_conceptos
 from src.auth import get_current_user
 
-router = APIRouter()
+router = APIRouter(tags=["Data Query and Filtering"])
 
 @router.get("/conceptos")
 async def listar_conceptos(

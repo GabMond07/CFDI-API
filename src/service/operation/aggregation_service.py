@@ -1,9 +1,9 @@
 from src.database import db
-from src.Models.visualize import CFDIFilter
-from typing import Dict, Optional
-import statistics
+from src.Models.operation.common import CFDIFilter
+from typing import Dict, Optional, List
+import math
 
-class StatsService:
+class AggregationService:
     def __init__(self, user_rfc: str):
         self.user_rfc = user_rfc
 
@@ -45,68 +45,51 @@ class StatsService:
                 where_conditions["total"]["lte"] = filters.max_total
         return where_conditions
 
-    async def central_tendency(self, field: str, filters: Optional[CFDIFilter]) -> Dict:
-        """Calcula medidas de tendencia central (promedio, mediana, moda).
+    async def aggregate_data(self, operation: str, field: str, filters: Optional[CFDIFilter], include_details: bool, page: int = 1, page_size: int = 100) -> Dict:
+        """Procesa agregaciones básicas (sum, count, avg, min, max).
 
         Args:
-            field (str): The field to analyze (total, subtotal).
+            operation (str): The aggregation operation (sum, count, avg, min, max).
+            field (str): The field to aggregate (total, subtotal).
             filters (Optional[CFDIFilter]): Filters to apply to the query.
+            include_details (bool): Whether to include detailed results.
+            page (int): Page number (starts at 1).
+            page_size (int): Number of records per page.
 
         Returns:
-            Dict: Average, median, and mode of the specified field.
+            Dict: The aggregation result, optionally detailed data, page number, page size, and total pages.
         """
         where_conditions = self._build_where_conditions(filters)
+        
+        # Count total records to calculate total pages
+        total_count = await db.cfdi.count(where=where_conditions)
+        total_pages = math.ceil(total_count / page_size) if total_count > 0 else 1
+
+        # Fetch paginated records
         cfdis = await db.cfdi.find_many(
-            where=where_conditions
+            where=where_conditions,
+            take=page_size,
+            skip=(page - 1) * page_size
         )
         values = [getattr(cfdi, field) for cfdi in cfdis]
         
-        if not values:
-            return {"average": 0, "median": 0, "mode": 0}
-        
-        average = sum(values) / len(values)
-        median = statistics.median(values)
-        mode = statistics.mode(values) if len(set(values)) < len(values) else values[0]
-        
-        return {
-            "average": average,
-            "median": median,
-            "mode": mode
+        result = {
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages
         }
-
-    async def basic_stats(self, field: str, filters: Optional[CFDIFilter]) -> Dict:
-        """Calcula estadísticas básicas (rango, varianza, desviación estándar, coeficiente de variación).
-
-        Args:
-            field (str): The field to analyze (total, subtotal).
-            filters (Optional[CFDIFilter]): Filters to apply to the query.
-
-        Returns:
-            Dict: Range, variance, standard deviation, and coefficient of variation.
-        """
-        where_conditions = self._build_where_conditions(filters)
-        cfdis = await db.cfdi.find_many(
-            where=where_conditions
-        )
-        values = [getattr(cfdi, field) for cfdi in cfdis]
+        if operation == "sum":
+            result[field] = sum(values) if values else 0
+        elif operation == "count":
+            result[field] = len(values)
+        elif operation == "avg":
+            result[field] = sum(values) / len(values) if values else 0
+        elif operation == "min":
+            result[field] = min(values) if values else 0
+        elif operation == "max":
+            result[field] = max(values) if values else 0
         
-        if not values:
-            return {
-                "range": 0,
-                "variance": 0,
-                "standard_deviation": 0,
-                "coefficient_of_variation": 0
-            }
+        if include_details:
+            result["details"] = [{"uuid": cfdi.uuid, field: getattr(cfdi, field)} for cfdi in cfdis]
         
-        average = sum(values) / len(values)
-        variance = sum((x - average) ** 2 for x in values) / len(values)
-        std_dev = variance ** 0.5
-        range_val = max(values) - min(values)
-        cv = (std_dev / average * 100) if average != 0 else 0
-        
-        return {
-            "range": range_val,
-            "variance": variance,
-            "standard_deviation": std_dev,
-            "coefficient_of_variation": cv
-        }
+        return {"result": result}
