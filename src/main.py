@@ -7,8 +7,9 @@ from src.router import (
     Consulta, issuer, receiver, concept, tax, tax_summary, payment,
     cfdi_relation, report, notification, auditlog, batchjob,
     register_user, login_user, logout, visualize, upload_cfdi,
-    operations_statics, scripts, report_router
+    operations_statics, report_router
 )
+from src.ml.router import webhooks_router
 from src.ml.router import sospechoso_router, routerCFDI
 from src.event_bus.consumers.login_consumer import start_login_consumer
 # from src.event_bus.publisher import init_event_bus, close_event_bus  futuras mejoras
@@ -85,8 +86,8 @@ app.include_router(upload_cfdi.router, prefix="/api/v1")
 app.include_router(sospechoso_router.router, prefix="/api/v1")
 app.include_router(routerCFDI.router, prefix="/api/v1")
 app.include_router(operations_statics.router, prefix="/api/v1")
-app.include_router(scripts.router, prefix="/api/v1")
 app.include_router(report_router.router, prefix="/api/v1")
+app.include_router(webhooks_router.router, prefix="/api/v1")
 
 # Eventos de ciclo de vida
 @app.on_event("startup")
