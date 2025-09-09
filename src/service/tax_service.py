@@ -8,40 +8,16 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
     try:
         await db.connect()
 
-        cfdis = await db.cfdi.find_many(where={"user_id": user_rfc})
-        cfdi_ids = [c.id for c in cfdis]
-
-        if not cfdi_ids:
-            return {
-                "pagina": filtros.pagina,
-                "por_pagina": filtros.por_pagina,
-                "total_resultados": 0,
-                "total_paginas": 0,
-                "datos": []
+        where = {
+            "concept": {
+                "cfdi": {
+                    "user_id": user_rfc
+                }
             }
+        }
 
-        conceptos = await db.concept.find_many(where={"cfdi_id": {"in": cfdi_ids}})
-        concept_ids = [c.id for c in conceptos]
-
-        if not concept_ids:
-            return {
-                "pagina": filtros.pagina,
-                "por_pagina": filtros.por_pagina,
-                "total_resultados": 0,
-                "total_paginas": 0,
-                "datos": []
-            }
-
-        if filtros.concept_id and filtros.concept_id not in concept_ids:
-            return {
-                "pagina": filtros.pagina,
-                "por_pagina": filtros.por_pagina,
-                "total_resultados": 0,
-                "total_paginas": 0,
-                "datos": []
-            }
-
-        where = {"concept_id": {"in": concept_ids}}
+        if filtros.concept_id:
+            where["concept_id"] = filtros.concept_id
 
         if filtros.type:
             where["tax_type"] = filtros.type

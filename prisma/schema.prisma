@@ -248,3 +248,7 @@ model RefreshToken {
     user       User      @relation(fields: [user_id], references: [rfc], onDelete: Cascade, onUpdate: Cascade)
     tenant     Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: Cascade)
 }
+generator erd {
+  provider = "prisma-erd-generator"
+}
+

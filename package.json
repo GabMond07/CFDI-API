@@ -1,6 +1,7 @@
 {
   "devDependencies": {
-    "prisma": "^5.22.0"
+    "prisma": "^5.22.0",
+    "prisma-erd-generator": "^2.0.4"
   },
   "dependencies": {
     "@prisma/client": "^5.17.0"

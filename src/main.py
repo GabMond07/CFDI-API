@@ -49,7 +49,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Ajustado al puerto del frontend
+    allow_origins=["http://localhost", "http://localhost:5173"],  # Ajustado al puerto del frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
