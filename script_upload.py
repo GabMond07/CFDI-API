@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 # Configuración del endpoint y credenciales
 ENDPOINT_URL = "http://localhost:8000/api/v1/upload_cfdi"  # Cambiar por tu URL del endpoint
-AUTH_TOKEN = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJST0xHMDIxMjI0QlVBIiwicm9sZV9pZCI6MSwiZXhwIjoxNzUzNTE1NDQwLCJzY29wZXMiOlsicmVhZF91c2VycyIsInJlYWRfY2ZkaXMiLCJ3cml0ZV9jZmRpcyJdfQ.z5Bwu7DX_9SCS8wUTmNztEoOFYNC1BWVx-FuBILI3iI"  # Cambiar por tu token JWT
-FOLDER_PATH = "C:/Users/Gabriel/Desktop/01-abril2023_anonimizados"  # Cambiar por la ruta de tu carpeta con archivos XML
-BATCH_SIZE = 20  # Número de archivos por solicitud
+AUTH_TOKEN = "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJST0xGMDIxMjI0QlVBIiwicm9sZV9pZCI6MSwiZXhwIjoxNzU1NzIyNTEwLCJzY29wZXMiOlsicmVhZF9jZmRpcyIsIndyaXRlX2NmZGlzIiwicmVwb3J0czpnZW5lcmF0ZSIsImpvaW46ZXhlY3V0ZSIsInNldHM6ZXhlY3V0ZSIsInN0YXRzOnJlYWQiXX0.zlUwlTV0g-5eLnhqF3z2qbeTS1nQVaujhTkm7iHpGvg"  # Cambiar por tu token JWT
+FOLDER_PATH = "C:/Users/Gabriel/Desktop/07-octubre2023_anonimizados"  # Cambiar por la ruta de tu carpeta con archivos XML
+BATCH_SIZE = 50  # Número de archivos por solicitud
 RETRY_ATTEMPTS = 2  # Número de reintentos para archivos fallidos
 
 async def upload_batch(client: httpx.AsyncClient, batch_files: list[Path], attempt: int = 1):

@@ -57,7 +57,7 @@ app.add_middleware(
 # Middleware de autenticación
 app.add_middleware(BaseHTTPMiddleware, dispatch=auth_middleware)
 
-# Middleware de profiling (opcional)
+# Middleware de profiling (opcional)  ------------------------- Para futuras mejoras
 # @app.middleware("http")
 # async def profile_request(request, call_next):
 #     profiler = Profiler()

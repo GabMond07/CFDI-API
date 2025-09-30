@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Query, Depends, Response, HTTPException,
 from src.service.operation.join_service import JoinService
 from src.Models.operation.common import CFDIFilter
 from src.service.operation.export_join_service import generate_report_from_data
-# from src.service.notification_service import NotificationService
+from src.service.notification.notification_service import NotificationService
 from src.permission import require_permissions
 from datetime import datetime, timezone
 from src.database import db
@@ -84,13 +84,14 @@ async def predefined_join(
         )
 
         # Enviar notificación via webhook si se guarda el reporte (RF12)
-        # if filters.save_report and report_result["report_id"]:
-        #     background_tasks.add_task(
-        #         NotificationService.notify_webhook,
-        #         user_rfc=user_rfc,
-        #         event_type="analysis_ready",
-        #         payload={"report_id": report_result["report_id"], "format": filters.format}
-        #     )
+        if filters.save_report and report_result["report_id"]:
+            background_tasks.add_task(
+                NotificationService.notify_webhook,
+                user_rfc=user_rfc,
+                event_type="analysis_ready",
+                payload={"report_id": report_result["report_id"], "format": filters.format},
+                cfdi_id=cfdi_id
+            )
 
         logger.info(
             f"Join predefinido {join_id} generado para RFC: {user_rfc} en formato {filters.format}, "
