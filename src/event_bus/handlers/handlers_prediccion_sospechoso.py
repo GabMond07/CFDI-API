@@ -43,7 +43,7 @@ async def procesar_mensaje(data):
         # Preparar datos para el webhook
         webhook_data = {
             "status": "completed",
-            "results": resultados,
+            "results": data,
             "timestamp": datetime.now().isoformat()
         }
 

@@ -10,8 +10,12 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
 
         where = {
             "concept": {
-                "cfdi": {
-                    "user_id": user_rfc
+                "is": {
+                    "cfdi": {
+                        "is": {
+                            "user_id": user_rfc
+                        }
+                    }
                 }
             }
         }
@@ -19,8 +23,8 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
         if filtros.concept_id:
             where["concept_id"] = filtros.concept_id
 
-        if filtros.type:
-            where["tax_type"] = filtros.type
+        if filtros.tax_type:
+            where["tax_type"] = filtros.tax_type
         if filtros.rate_min is not None:
             where.setdefault("rate", {})["gte"] = filtros.rate_min
         if filtros.rate_max is not None:
@@ -52,16 +56,7 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
             skip=skip,
             take=take,
             include={
-                "concept": {
-                    "include": {
-                        "cfdi": {
-                            "include": {
-                                "issuer": True,
-                                "receiver": True
-                            }
-                        }
-                    }
-                }
+                "concept": True
             }
         )
 
@@ -72,6 +67,7 @@ async def consultar_taxes(filtros: FiltroTax, user_rfc: str):
             "total_paginas": (total + filtros.por_pagina - 1) // filtros.por_pagina,
             "datos": resultados
         }
+
 
     except PrismaError as e:
         raise HTTPException(status_code=500, detail=f"Error en base de datos: {str(e)}")

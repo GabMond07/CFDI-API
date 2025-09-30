@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 class FiltroCFDIRelation(BaseModel):
     related_uuid: Optional[str] = None
     relation_type: Optional[str] = None
-    ordenar_por: Optional[str] = Field("id")
+    ordenar_por: Optional[str] = Field("relation_type")
     ordenar_dir: Optional[Literal["asc", "desc"]] = "asc"
     pagina: int = Field(1, ge=1)
     por_pagina: int = Field(10, ge=1, le=100)
@@ -19,7 +19,7 @@ class FiltroCFDIRelation(BaseModel):
             except ValueError:
                 raise ValueError("related_uuid debe ser un UUID v4 válido")
 
-        campos_validos_ordenar = {"id", "cfdi_id", "related_uuid", "relation_type"}
+        campos_validos_ordenar = {"cfdi_id", "related_uuid", "relation_type"}
         if self.ordenar_por not in campos_validos_ordenar:
             raise ValueError(f"ordenar_por inválido. Debe ser uno de {campos_validos_ordenar}")
 

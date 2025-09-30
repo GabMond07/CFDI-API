@@ -2,8 +2,7 @@ from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Literal, ClassVar, List
 
 class FiltroTax(BaseModel):
-    type: Optional[str] = None
-    tax: Optional[str] = None
+    tax_type: Optional[str] = None
     rate_min: Optional[float] = Field(None, ge=0, description="La tasa mínima no puede ser negativa")
     rate_max: Optional[float] = Field(None, ge=0, description="La tasa máxima no puede ser negativa")
     amount_min: Optional[float] = Field(None, ge=0, description="El monto mínimo no puede ser negativo")

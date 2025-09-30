@@ -69,10 +69,10 @@ async def filtrar_cfdi(filtros: FiltroConsulta, user_rfc: str):
         include={"issuer": True, "receiver": True}
     )
 
-    if total == 0 and filtros.categoria:
+    if total == 0:
         await db.disconnect()
         return {
-            "mensaje": f"No se encontraron CFDIs con la categoría '{filtros.categoria}' para el usuario.",
+            "mensaje": f"No se encontraron CFDIs con la categoría  para el usuario.",
             "pagina": filtros.pagina,
             "por_pagina": filtros.por_pagina,
             "total_resultados": 0,

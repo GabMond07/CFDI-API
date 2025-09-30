@@ -26,8 +26,8 @@ class FiltroReport(BaseModel):
                 detail=f"ordenar_por debe ser uno de: {', '.join(campos_validos)}"
             )
 
-        formatos_validos = {"pdf", "xml", "csv"}
-        if self.format and self.format.lower() not in formatos_validos:
+        formatos_validos = {"pdf", "xml", "csv", "json","PDF", "XML", "CSV", "JSON","XLS","xls"}
+        if self.format  not in formatos_validos:
             raise HTTPException(
                 status_code=400,
                 detail=f"Formato inválido. Opciones válidas: {', '.join(formatos_validos)}"
