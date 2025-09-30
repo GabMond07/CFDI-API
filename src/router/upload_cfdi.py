@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Upload CFDI"])
 
-@router.post("/upload_cfdi", dependencies=[Depends(require_permissions(["write_cfdis"]))])
+@router.post("/upload_cfdi", dependencies=[Depends(require_permissions(["write:cfdis"]))])
 async def upload_cfdi(
     files: List[UploadFile] = File(...),
     current_user: dict = Depends(get_current_user),

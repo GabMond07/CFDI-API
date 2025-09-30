@@ -134,6 +134,39 @@ ENVIRONMENT="development"
   prisma migrate status
   ```
 
+````markdown
+## 🔒 Especificación de Permisos (Columna `permissions`)
+
+La columna `permissions` de la tabla `Roles` utiliza el tipo de dato `jsonb` de PostgreSQL para almacenar una lista de capacidades (`scopes`) que un rol específico puede ejecutar en el sistema. Esto permite una gestión de acceso flexible y escalable.
+Se encuntra disponible en el script en la base de datos: `BD.sql`
+
+### Formato JSON
+
+El formato requerido para el objeto JSON es una clave principal llamada `scopes`, que contiene un array de strings. Cada string dentro del array representa un permiso activo.
+
+| Clave    | Tipo          | Descripción                                |
+| -------- | ------------- | ------------------------------------------ |
+| `scopes` | Array<String> | Lista de permisos disponibles para el rol. |
+
+**Estructura Ejemplo: (Permisos disponibles para el rol "Contribuyente")**
+
+```json
+{
+  "scopes": ["reports:generate", "write:cfdis", "join:execute"]
+}
+```
+````
+
+### Permisos Disponibles Actualmente
+
+Los siguientes son los permisos definidos para realizar operaciones en el sistema:
+
+| Permiso            | Descripción                                                                                         |
+| ------------------ | --------------------------------------------------------------------------------------------------- |
+| `reports:generate` | Permite al usuario generar y descargar reportes del sistema.                                        |
+| `write:cfdis`      | Permite al usuario crear y editar registros de Comprobantes Fiscales Digitales por Internet (CFDI). |
+| `join:execute`     | Permite al usuario ejecutar operaciones de unión o integración específicas.                         |
+
 ## Notas adicionales
 
 - Asegúrate de que la base de datos esté corriendo antes de aplicar migraciones.
