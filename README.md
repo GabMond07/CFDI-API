@@ -134,7 +134,6 @@ ENVIRONMENT="development"
   prisma migrate status
   ```
 
-````markdown
 ## 🔒 Especificación de Permisos (Columna `permissions`)
 
 La columna `permissions` de la tabla `Roles` utiliza el tipo de dato `jsonb` de PostgreSQL para almacenar una lista de capacidades (`scopes`) que un rol específico puede ejecutar en el sistema. Esto permite una gestión de acceso flexible y escalable.
@@ -155,7 +154,6 @@ El formato requerido para el objeto JSON es una clave principal llamada `scopes`
   "scopes": ["reports:generate", "write:cfdis", "join:execute"]
 }
 ```
-````
 
 ### Permisos Disponibles Actualmente
 
