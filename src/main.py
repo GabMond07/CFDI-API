@@ -8,6 +8,7 @@ from src.router import (
     cfdi_relation, notification, auditlog, batchjob,
     register_user, login_user, logout, upload_cfdi, scripts
 )
+from src.ml.router import webhooks_router
 from src.ml.router import sospechoso_router, routerCFDI
 from src.event_bus.consumers.login_consumer import start_login_consumer
 # from src.event_bus.publisher import init_event_bus, close_event_bus  futuras mejoras
@@ -20,7 +21,7 @@ from src.router.operation import (
     visualize, aggregation, central_tendency, joins, stats_basic
 )
 from src.router.report import report, report_router
-# from pyinstrument import Profiler  
+# from pyinstrument import Profiler
 
 # Configurar logging
 logging.basicConfig(level=logging.INFO)
@@ -48,7 +49,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 # Configuración de CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],  # Ajustado al puerto del frontend
+    allow_origins=["http://localhost", "http://localhost:5173"],  # Ajustado al puerto del frontend
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

@@ -6,25 +6,10 @@ async def consultar_pagos(filtros: FiltroPayment, user_rfc: str):
     db = Prisma()
     await db.connect()
 
-    # Obtener CFDIs del usuario autenticado
-    cfdis = await db.cfdi.find_many(
-        where={"user_id": user_rfc}
-    )
-    cfdi_ids = [c.id for c in cfdis]
-
-    if not cfdi_ids:
-        await db.disconnect()
-        return {
-            "pagina": filtros.pagina,
-            "por_pagina": filtros.por_pagina,
-            "total_resultados": 0,
-            "total_paginas": 0,
-            "datos": []
-        }
-
-    # Armar filtros
     where = {
-        "cfdi_id": {"in": cfdi_ids}
+        "cfdi": {
+            "user_id": user_rfc
+        }
     }
 
     if filtros.fecha_inicio:
@@ -41,8 +26,8 @@ async def consultar_pagos(filtros: FiltroPayment, user_rfc: str):
         where.setdefault("payment_amount", {})["lte"] = filtros.monto_max
 
     ordenar_por = filtros.ordenar_por if filtros.ordenar_por in [
-        "id", "payment_date", "payment_form", "payment_amount"
-    ] else "id"
+         "payment_date", "payment_form", "payment_amount"
+    ] else "payment_form"
 
     skip = (filtros.pagina - 1) * filtros.por_pagina
     take = filtros.por_pagina

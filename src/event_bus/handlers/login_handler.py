@@ -1,4 +1,3 @@
-# src/event_bus/handlers/login_handler.py
 from prisma import Prisma
 from datetime import datetime
 import json

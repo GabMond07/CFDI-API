@@ -4,7 +4,7 @@ df = pd.read_csv("cfdis_para_entrenar.csv")
 
 # Reglas:
 # - total > 1,000,000
-# - método de pago raro (no "PUE" ni "PPD")
+# - metodo de pago raro (no "PUE" ni "PPD")
 # - día fin de semana (5=sábado, 6=domingo)
 
 def es_sospechoso(row):

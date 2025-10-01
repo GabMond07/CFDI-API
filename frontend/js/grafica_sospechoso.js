@@ -4,7 +4,7 @@ $(document).on('click', '#btn-cargar-sospechoso', function () {
     const token = localStorage.getItem('token');
 
     $.ajax({
-        url: 'http://localhost:8000/api/v1/cfdi/prediccion-sospechoso',
+        url: 'http://localhost:8000/api/v1/cfdi/clasificar_todos_cfdis',
         method: 'GET',
         headers: {
             Authorization: `Bearer ${token}`

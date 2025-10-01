@@ -8,12 +8,10 @@ async def consultar_issuer(filtros: FiltroIssuer, user_rfc: str):
     try:
         await db.connect()
 
-        # Buscar CFDIs del usuario autenticado
         cfdis = await db.cfdi.find_many(
             where={"user_id": user_rfc}
         )
 
-        #Extraer IDs únicos de emisores usados por este usuario
         issuer_ids = list({cfdi.issuer_id for cfdi in cfdis})
 
         if not issuer_ids:
@@ -27,8 +25,8 @@ async def consultar_issuer(filtros: FiltroIssuer, user_rfc: str):
             }
 
         where = {
-            "rfc_issuer": {"in": issuer_ids},     # emisores del usuario
-            "cfdis": {"some": {}}                  # emisores que hayan emitido CFDIs}
+            "rfc_issuer": {"in": issuer_ids},
+            "cfdis": {"some": {}}
         }
 
         if filtros.rfc:

@@ -15,12 +15,10 @@ class FiltroReport(BaseModel):
 
     @model_validator(mode="after")
     def validar_filtros(self):
-        # Validar fechas
         if self.fecha_inicio and self.fecha_fin:
             if self.fecha_inicio > self.fecha_fin:
                 raise HTTPException(status_code=400, detail="fecha_inicio no puede ser mayor que fecha_fin")
 
-        # Validar campos válidos para ordenar
         campos_validos = {"created_at", "format", "cfdi_id"}
         if self.ordenar_por not in campos_validos:
             raise HTTPException(
@@ -28,9 +26,8 @@ class FiltroReport(BaseModel):
                 detail=f"ordenar_por debe ser uno de: {', '.join(campos_validos)}"
             )
 
-        # Validar format si quieres restringir formatos
-        formatos_validos = {"pdf", "xml", "csv"}
-        if self.format and self.format.lower() not in formatos_validos:
+        formatos_validos = {"pdf", "xml", "csv", "json","PDF", "XML", "CSV", "JSON","XLS","xls"}
+        if self.format  not in formatos_validos:
             raise HTTPException(
                 status_code=400,
                 detail=f"Formato inválido. Opciones válidas: {', '.join(formatos_validos)}"

@@ -7,31 +7,24 @@ async def consultar_conceptos(filtros: FiltroConcept, user_rfc: str):
     db = Prisma()
     try:
         await db.connect()
-
-        cfdis = await db.cfdi.find_many(where={"user_id": user_rfc})
-        cfdi_ids = [c.id for c in cfdis]
-
-        if not cfdi_ids:
-            return {
-                "pagina": filtros.pagina,
-                "por_pagina": filtros.por_pagina,
-                "total_resultados": 0,
-                "total_paginas": 0,
-                "datos": []
-            }
-
-        if filtros.cfdi_id and filtros.cfdi_id not in cfdi_ids:
-            return {
-                "pagina": filtros.pagina,
-                "por_pagina": filtros.por_pagina,
-                "total_resultados": 0,
-                "total_paginas": 0,
-                "datos": []
-            }
-
         where = {
-            "cfdi_id": {"in": cfdi_ids}
+            "cfdi": {
+                "user_id": user_rfc
+            }
         }
+
+        if filtros.cfdi_id:
+            where["cfdi_id"] = filtros.cfdi_id
+
+
+        if filtros.cfdi_id and filtros.cfdi_id:
+            return {
+                "pagina": filtros.pagina,
+                "por_pagina": filtros.por_pagina,
+                "total_resultados": 0,
+                "total_paginas": 0,
+                "datos": []
+            }
 
         if filtros.description:
             where["description"] = {"contains": filtros.description}
@@ -61,7 +54,6 @@ async def consultar_conceptos(filtros: FiltroConcept, user_rfc: str):
         if filtros.ordenar_por not in campos_validos:
             raise HTTPException(status_code=400, detail=f"Campo inválido para ordenar: {filtros.ordenar_por}")
 
-         # Filtro por presencia de impuestos
         if filtros.solo_con_impuestos is True:
             where["taxes"] = {"some": {}}
         elif filtros.solo_con_impuestos is False:

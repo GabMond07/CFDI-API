@@ -24,27 +24,22 @@ class FiltroConcept(BaseModel):
 
     @model_validator(mode="after")
     def validar_campos(self):
-        # Validación de rangos para amount
         if self.monto_min is not None and self.monto_max is not None:
             if self.monto_max < self.monto_min:
                 raise ValueError("monto_max no puede ser menor que monto_min")
 
-        # unit_value
         if self.unit_value_min is not None and self.unit_value_max is not None:
             if self.unit_value_max < self.unit_value_min:
                 raise ValueError("unit_value_max no puede ser menor que unit_value_min")
 
-        # quantity
         if self.quantity_min is not None and self.quantity_max is not None:
             if self.quantity_max < self.quantity_min:
                 raise ValueError("quantity_max no puede ser menor que quantity_min")
 
-        # discount
         if self.discount_min is not None and self.discount_max is not None:
             if self.discount_max < self.discount_min:
                 raise ValueError("discount_max no puede ser menor que discount_min")
 
-        # Validación de campo ordenar_por
         if self.ordenar_por and self.ordenar_por not in self.campos_validos_ordenar:
             raise ValueError(f"ordenar_por debe ser uno de {self.campos_validos_ordenar}")
 

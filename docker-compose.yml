@@ -1,0 +1,24 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    environment:
+      - CLOUDAMQP_URL=amqps://hcwrkxpe:nlP9Uxlzr5Gp83TVLK7yB3twzwrT2VMk@shark.rmq.cloudamqp.com/hcwrkxpe
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: bash -c "PYTHONPATH=/app python src/event_bus/handlers/handlers_prediccion_sospechoso.py"
+    volumes:
+      - .:/app
+    depends_on:
+      - api
+    environment:
+      - CLOUDAMQP_URL=amqps://hcwrkxpe:nlP9Uxlzr5Gp83TVLK7yB3twzwrT2VMk@shark.rmq.cloudamqp.com/hcwrkxpe

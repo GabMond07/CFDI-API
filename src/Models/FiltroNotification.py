@@ -16,12 +16,10 @@ class FiltroNotification(BaseModel):
 
     @model_validator(mode="after")
     def validar_filtros(self):
-        # Validación de fechas
         if self.fecha_inicio and self.fecha_fin:
             if self.fecha_inicio > self.fecha_fin:
                 raise HTTPException(status_code=400, detail="La fecha de inicio no puede ser mayor que la fecha final")
 
-        # Validación de campos válidos para ordenar
         campos_validos = {"created_at", "type", "status", "cfdi_id"}
         if self.ordenar_por not in campos_validos:
             raise HTTPException(
@@ -29,7 +27,6 @@ class FiltroNotification(BaseModel):
                 detail=f"Campo inválido para ordenar: '{self.ordenar_por}'. Opciones válidas: {', '.join(campos_validos)}"
             )
 
-        # Validación opcional de valores de  status
         estados_validos = {"pendiente", "enviado", "fallido"}
         if self.status and self.status.lower() not in estados_validos:
             raise HTTPException(

@@ -13,7 +13,6 @@ class FiltroReceiver(BaseModel):
     pagina: int = Field(1, ge=1)
     por_pagina: int = Field(10, ge=1, le=100)
 
-    # Lista de campos válidos para ordenar
     campos_validos_ordenar: ClassVar[List[str]] = [
         "rfc_receiver", "name_receiver", "cfdi_use", "tax_regime"
     ]

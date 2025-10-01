@@ -6,6 +6,8 @@ async def publish_event(queue_name: str, payload: dict):
     channel = await connection.channel()
     await channel.declare_queue(queue_name, durable=True)
 
+
+
     message = Message(
         body=json.dumps(payload).encode(),
         delivery_mode=DeliveryMode.PERSISTENT

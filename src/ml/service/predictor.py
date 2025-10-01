@@ -2,7 +2,6 @@ from prisma import Prisma
 import pandas as pd
 import traceback
 import joblib
-from src.ml.schemas.cfdi_input import CFDISospechosoInput
 
 modelo_data = joblib.load("src/ml/modelo_sospechoso.pkl")
 modelo = modelo_data["modelo"]

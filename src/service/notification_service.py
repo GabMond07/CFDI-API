@@ -7,7 +7,6 @@ async def consultar_notificaciones(filtros: FiltroNotification, user_rfc: str):
     db = Prisma()
     await db.connect()
 
-    # Armar filtros base
     where = {
         "user_id": {"equals": user_rfc}
     }

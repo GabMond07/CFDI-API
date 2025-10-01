@@ -18,7 +18,6 @@ async def consultar_reportes(filtros: FiltroReport, user_rfc: str):
         if filtros.cfdi_id:
             where["cfdi_id"] = {"equals": filtros.cfdi_id}
 
-        # 🛠 Corrección en el manejo de fechas
         if filtros.fecha_inicio or filtros.fecha_fin:
             where["created_at"] = {}
             if filtros.fecha_inicio:
@@ -26,7 +25,6 @@ async def consultar_reportes(filtros: FiltroReport, user_rfc: str):
             if filtros.fecha_fin:
                 where["created_at"]["lte"] = datetime.combine(filtros.fecha_fin, time.max)
 
-        # Validación de orden
         campos_validos = ["id", "created_at", "format"]
         ordenar_por = filtros.ordenar_por if filtros.ordenar_por in campos_validos else "created_at"
         ordenar_dir = filtros.ordenar_dir

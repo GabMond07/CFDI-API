@@ -8,24 +8,20 @@ async def resumen_impuestos_por_usuario(user_rfc: str):
     try:
         await db.connect()
 
-        # Obtener CFDIs del usuario
         cfdis = await db.cfdi.find_many(where={"user_id": user_rfc})
         cfdi_ids = [c.id  for c in cfdis]
 
         if not cfdi_ids:
             return {"por_tipo": [], "por_tasa": [], "por_tipo_tasa": []}
 
-        # Obtener conceptos relacionados con esos CFDIs
         conceptos = await db.concept.find_many(where={"cfdi_id": {"in": cfdi_ids}})
         concept_ids = [c.id for c in conceptos]
 
         if not concept_ids:
             return {"por_tipo": [], "por_tasa": [], "por_tipo_tasa": []}
 
-        # Obtener impuestos
         impuestos = await db.taxes.find_many(where={"concept_id": {"in": concept_ids}})
 
-        # Agrupar los datos
         por_tipo = defaultdict(lambda: {"cantidad": 0, "total": 0.0})
         por_tasa = defaultdict(lambda: {"cantidad": 0, "total": 0.0})
         por_tipo_tasa = defaultdict(lambda: {"cantidad": 0, "total": 0.0})

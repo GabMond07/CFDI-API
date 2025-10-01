@@ -3,16 +3,16 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from prisma import Prisma
 import pandas as pd
+from sklearn.metrics import accuracy_score, classification_report
 
 async def obtener_datos_cfdi():
     db = Prisma()
     await db.connect()
 
-    cfdis = await db.cfdi.find_many(take=500)
+    cfdis = await db.cfdi.find_many()
 
     await db.disconnect()
 
-    # Filtra en Python si hay campos nulos
     filtrados = [
         c for c in cfdis
         if c.type and c.payment_form and c.currency and c.cfdi_use
@@ -35,17 +35,15 @@ async def obtener_datos_cfdi():
 async def clasificar_tipo_cfdi():
     data = await obtener_datos_cfdi()
 
-    # Eliminar registros vacíos
     data.dropna(inplace=True)
 
-    # Codificar variables categóricas
     le_currency = LabelEncoder()
     le_payment_form = LabelEncoder()
     le_cfdi_use = LabelEncoder()
     le_export_status = LabelEncoder()
     le_issuer = LabelEncoder()
     le_receiver = LabelEncoder()
-    le_type = LabelEncoder()  # Lo que queremos predecir
+    le_type = LabelEncoder()
 
     data["currency_encoded"] = le_currency.fit_transform(data["currency"])
     data["payment_form_encoded"] = le_payment_form.fit_transform(data["payment_form"])
@@ -55,7 +53,6 @@ async def clasificar_tipo_cfdi():
     data["receiver_encoded"] = le_receiver.fit_transform(data["receiver_id"].astype(str))
     data["type_encoded"] = le_type.fit_transform(data["type"])
 
-    # Variables de entrada (X) y etiqueta (y)
     X = data[[
         "subtotal",
         "currency_encoded",
@@ -67,14 +64,21 @@ async def clasificar_tipo_cfdi():
     ]]
     y = data["type_encoded"]
 
-    # División en entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
-    # Entrenar el modelo
     model = RandomForestClassifier()
     model.fit(X_train, y_train)
 
-    # Evaluar el modelo
+    # Predicciones en entrenamiento
+    train_preds = model.predict(X_train)
+    print("Entrenamiento:")
+    print(classification_report(y_train, train_preds))
+
+    # Predicciones en prueba
+    test_preds = model.predict(X_test)
+    print("Prueba:")
+    print(classification_report(y_test, test_preds))
+
     predictions = model.predict(X_test)
 
     resultados = []
